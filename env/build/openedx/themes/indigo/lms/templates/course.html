@@ -1,0 +1,57 @@
+<%def name="online_help_token()"><% return "course" %></%def>
+<%namespace name='static' file='static_content.html'/>
+<%!
+from django.utils.translation import gettext as _
+from django.urls import reverse
+%>
+<%page args="course" expression_filter="h"/>
+
+<a href="${reverse('about_course', args=[str(course.id)])}" 
+   class="course-card-link" 
+   aria-label="${_('Xem chi tiết về')} ${course.display_name_with_default}">
+  <article class="course" role="region" aria-label="${course.display_name_with_default}">
+    <div class="course-image">
+      <img src="${course.course_image_url}" 
+           onerror="this.src='/theming/asset/images/no_course_image.png';" 
+           alt="${course.display_name_with_default} ${course.display_number_with_default}" />
+    </div>
+    
+    <div class="course-info">
+      <div class="course-content">
+        <div class="course-code">${course.display_number_with_default}</div>
+        <h2 class="course-title">${course.display_name_with_default}</h2>
+        <div class="course-organization">${course.display_org_with_default}</div>
+        
+        <!-- Course description/summary -->
+        % if hasattr(course, 'short_description') and course.short_description:
+          <div class="course-description">${course.short_description}</div>
+        % elif hasattr(course, 'subtitle') and course.subtitle:
+          <div class="course-description">${course.subtitle}</div>
+        % else:
+          <div class="course-description">${_("Khám phá kiến thức mới với khóa học chất lượng cao")}</div>
+        % endif
+      </div>
+
+      <div class="course-date">
+        <svg width="16" height="16" viewBox="0 0 20 21" fill="none" aria-hidden="true">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M15 3.83332H15.8333C16.75 3.83332 17.5 4.58332 17.5 5.49999V17.1667C17.5 18.0833 16.75 18.8333 15.8333 18.8333H4.16667C3.24167 18.8333 2.5 18.0833 2.5 17.1667L2.50833 5.49999C2.50833 4.58332 3.24167 3.83332 4.16667 3.83332H5V2.16666H6.66667V3.83332H13.3333V2.16666H15V3.83332ZM4.16667 8.83332V17.1667H15.8333V8.83332H4.16667ZM15.8333 7.16666H4.16667V5.49999H15.8333V7.16666ZM14.1667 11.3333H10V15.5H14.1667V11.3333Z" fill="currentColor"/>
+        </svg>
+        <%
+        if course.start is not None:
+            course_date_string = course.start.strftime('%Y-%m-%dT%H:%M:%S%z')
+        else:
+            course_date_string = ''
+        %>
+        % if course.advertised_start is not None:
+          <span>${_("Bắt đầu")}: ${course.advertised_start}</span>
+        % else:
+          <span class="localized_datetime" data-format="shortDate" data-datetime="${course_date_string}" data-language="${LANGUAGE_CODE}" data-string="${_('Bắt đầu')}: {date}"></span>
+        % endif
+      </div>
+    </div>
+  </article>
+</a>
+
+<%static:require_module_async module_name="js/dateutil_factory" class_name="DateUtilFactory">
+    DateUtilFactory.transform(iterationKey=".localized_datetime");
+</%static:require_module_async>

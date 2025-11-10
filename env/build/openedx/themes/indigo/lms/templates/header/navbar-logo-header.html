@@ -1,0 +1,76 @@
+## mako
+
+<%page expression_filter="h" args="online_help_token"/>
+
+<%namespace name='static' file='../static_content.html'/>
+<%!
+from django.urls import reverse
+from django.utils.translation import gettext as _
+from lms.djangoapps.ccx.overrides import get_current_ccx
+from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
+from openedx.features.enterprise_support.utils import get_enterprise_learner_generic_name, get_enterprise_learner_portal
+
+# App that handles subdomain specific branding
+from lms.djangoapps.branding import api as branding_api
+%>
+
+<%
+enterprise_customer_link = get_enterprise_learner_portal(request)
+%>
+
+<div class="h1-header-logo">
+  % if enterprise_customer_link:
+    <a href="${settings.ENTERPRISE_LEARNER_PORTAL_BASE_URL}/${enterprise_customer_link.get('slug')}" title="${_('{name} Dashboard').format(name=enterprise_customer_link.get('name'))}">
+      <img class="h1-logo" src="${enterprise_customer_link.get('logo')}" alt="${_('{name} Learner Dashboard').format(name=enterprise_customer_link.get('name'))}"/>
+        % if settings.LOGO_IMAGE_EXTRA_TEXT == 'edge':
+            <span class="h1-font-italic"> | EDGE</span>
+        % endif
+    </a>
+  % else:
+    <%
+    # Logic redirect logo dựa trên trạng thái đăng nhập
+    if user.is_authenticated:
+        logo_href = reverse('dashboard')  # Dashboard cho user đã đăng nhập
+        logo_title = _("{platform_name} Learner Dashboard").format(platform_name=static.get_platform_name())
+    else:
+        logo_href = "/"  # Trang chủ cho user chưa đăng nhập
+        logo_title = _("{platform_name} Home Page").format(platform_name=static.get_platform_name())
+    %>
+    <a href="${logo_href}" title="${logo_title}">
+      <%block name="navigation_logo">
+        <img  class="h1-logo" src="${branding_api.get_logo_url(is_secure)}" alt="${_("{platform_name} Home Page").format(platform_name=static.get_platform_name())}"/>
+      </%block>
+        % if settings.LOGO_IMAGE_EXTRA_TEXT == 'edge':
+            <span class="h1-font-italic"> | EDGE</span>
+        % endif
+    </a>
+  % endif
+  % if course:
+    <div class="h1-course-header">
+      <span class="h1-provider">${course.display_org_with_default}:</span>
+      <span class="h1-course-number">${course.display_number_with_default}</span>
+      <%
+      display_name = course.display_name_with_default
+      if settings.FEATURES.get('CUSTOM_COURSES_EDX', False):
+        ccx = get_current_ccx(course.id)
+        if ccx:
+          display_name = ccx.display_name
+      %>
+      <span class="h1-course-name">${display_name}</span>
+    </div>
+  % endif
+</div>
+% if enable_enterprise_sidebar:
+  <div class="h1-enterprise-tagline">
+    <% tagline = configuration_helpers.get_value('ENTERPRISE_TAGLINE', settings.ENTERPRISE_TAGLINE) %>
+    % if tagline:
+      ${tagline}
+    % endif
+  </div>
+% endif
+
+<style>
+  .h1-global-header .h1-header-logo a .h1-logo {
+    height: 50px;
+  }
+</style>

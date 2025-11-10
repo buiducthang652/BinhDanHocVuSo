@@ -1,0 +1,9 @@
+{
+	"sans": [
+		"meilisearch.binhdanhocvuso.hnue.edu.vn"
+	],
+	"issuer_data": {
+		"url": "https://acme-v02.api.letsencrypt.org/acme/cert/05ecb6b3aa535b85eb6528db02a2a76861cc",
+		"ca": "https://acme-v02.api.letsencrypt.org/directory"
+	}
+}

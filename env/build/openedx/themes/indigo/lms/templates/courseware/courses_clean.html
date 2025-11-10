@@ -1,0 +1,458 @@
+<%page expression_filter="h"/>
+<%!
+  import json
+  from django.utils.translation import gettext as _
+  from openedx.core.djangolib.js_utils import js_escaped_string, dump_js_escaped_json
+%>
+<%inherit file="../main.html" />
+<%
+  course_discovery_enabled = settings.FEATURES.get('ENABLE_COURSE_DISCOVERY')
+%>
+<%namespace name='static' file='../static_content.html'/>
+
+<%block name="head_extra">
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap&subset=vietnamese" rel="stylesheet"/>
+  
+  <style>
+    /* Modern Course Catalog - Simple & Clean Approach */
+    
+    /* Hide legacy elements */
+    .page-head, .page-title, .hero, .course-heading-area h1,
+    .filters, #filter-bar, .search-facets { 
+      display: none !important; 
+    }
+    
+    /* Search styling */
+    .search-row { 
+      display: flex; 
+      gap: 16px; 
+      margin: 40px auto 60px; 
+      max-width: 900px;
+      align-items: stretch;
+      padding: 0 20px;
+    }
+    
+    .search-input-wrap { 
+      position: relative; 
+      flex: 1;
+      max-width: 600px;
+    }
+    
+    .search-input-wrap svg { 
+      position: absolute; 
+      left: 20px; 
+      top: 50%; 
+      transform: translateY(-50%); 
+      z-index: 2; 
+      width: 20px;
+      height: 20px;
+      opacity: 0.5;
+      color: #64748b;
+    }
+    
+    .discovery-input { 
+      width: 100%; 
+      height: 56px; 
+      padding: 0 140px 0 52px; 
+      border: 0; 
+      border-radius: 28px; 
+      background: #ffffff; 
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease; 
+      font-size: 16px;
+      font-weight: 500;
+      color: #1e293b;
+      font-family: "Inter", sans-serif;
+    }
+    
+    .discovery-input:focus { 
+      outline: none; 
+      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2);
+      transform: translateY(-2px);
+    }
+    
+    .discovery-input::placeholder {
+      color: #94a3b8;
+    }
+    
+    #clear-discovery { 
+      position: absolute; 
+      right: 120px; 
+      top: 50%; 
+      transform: translateY(-50%);
+      width: 24px; 
+      height: 24px; 
+      border-radius: 50%; 
+      border: 0; 
+      background: #f1f5f9;
+      color: #64748b; 
+      cursor: pointer; 
+      display: none; 
+      transition: all 0.3s ease;
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 24px;
+      text-align: center;
+    }
+    
+    #clear-discovery:hover { 
+      background: #e2e8f0; 
+    }
+    
+    .discovery-submit { 
+      height: 56px; 
+      min-width: 120px; 
+      padding: 0 32px; 
+      border-radius: 28px; 
+      border: 0;
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); 
+      color: white; 
+      font-weight: 700; 
+      font-size: 16px;
+      cursor: pointer; 
+      transition: all 0.3s ease;
+      font-family: "Inter", sans-serif;
+    }
+    
+    .discovery-submit:hover { 
+      transform: translateY(-2px); 
+      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
+    }
+    
+    /* Course Grid - FLEXBOX SOLUTION */
+    .courses-listing { 
+      display: flex !important;
+      flex-wrap: wrap !important;
+      gap: 24px !important;
+      list-style: none !important; 
+      margin: 0 auto !important; 
+      padding: 0 !important;
+      max-width: 1600px !important;
+      width: 100% !important;
+    }
+    
+    .courses-listing-item { 
+      flex: 1 1 280px !important;
+      max-width: calc(25% - 18px) !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      float: none !important;
+      min-height: 400px !important;
+    }
+    
+    /* Course Cards */
+    .course { 
+      display: flex !important; 
+      flex-direction: column !important; 
+      height: 100% !important; 
+      background: #ffffff !important;
+      border: 1px solid rgba(226,232,240,0.8) !important; 
+      border-radius: 16px !important; 
+      overflow: hidden !important;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+      transition: all 0.3s ease !important; 
+      position: relative !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      float: none !important;
+    }
+    
+    .course:hover { 
+      transform: translateY(-8px) !important; 
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15) !important;
+    }
+    
+    /* Course image */
+    .course .course-image { 
+      position: relative !important; 
+      width: 100% !important; 
+      height: 200px !important; 
+      background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%) !important; 
+      overflow: hidden !important; 
+    }
+    
+    .course .course-image img { 
+      width: 100% !important; 
+      height: 100% !important; 
+      object-fit: cover !important; 
+      display: block !important; 
+      transition: transform 0.3s ease !important; 
+    }
+    
+    .course:hover .course-image img { 
+      transform: scale(1.05) !important; 
+    }
+    
+    /* Course content */
+    .course .course-info { 
+      display: flex !important; 
+      flex-direction: column !important; 
+      gap: 12px !important; 
+      padding: 24px !important;
+      flex: 1 !important;
+    }
+    
+    .course .course-title { 
+      font-size: 18px !important; 
+      font-weight: 700 !important; 
+      color: #0f172a !important;
+      line-height: 1.4 !important; 
+      margin: 0 !important; 
+      font-family: "Inter", sans-serif !important;
+      display: -webkit-box !important;
+      -webkit-line-clamp: 2 !important;
+      -webkit-box-orient: vertical !important;
+      overflow: hidden !important;
+    }
+    
+    .course .course-organization {
+      color: #64748b !important; 
+      font-size: 14px !important;
+      font-weight: 500 !important;
+      margin: 0 !important;
+      font-family: "Inter", sans-serif !important;
+    }
+    
+    .course .course-date {
+      color: #64748b !important; 
+      font-size: 14px !important;
+      margin: 8px 0 16px !important;
+      font-family: "Inter", sans-serif !important;
+    }
+    
+    .course .learn-more {
+      display: inline-flex !important; 
+      align-items: center !important; 
+      justify-content: center !important; 
+      height: 44px !important;
+      width: 100% !important; 
+      margin-top: auto !important;
+      border-radius: 22px !important; 
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important; 
+      color: white !important;
+      font-weight: 600 !important; 
+      font-size: 14px !important; 
+      text-decoration: none !important;
+      border: 0 !important; 
+      transition: all 0.3s ease !important; 
+      text-align: center !important;
+      font-family: "Inter", sans-serif !important;
+    }
+    
+    .course .learn-more:hover {
+      background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%) !important; 
+      transform: translateY(-2px) !important; 
+      color: white !important;
+      text-decoration: none !important; 
+    }
+    
+    /* Responsive */
+    @media (max-width: 1200px) {
+      .courses-listing-item { 
+        max-width: calc(33.333% - 16px) !important;
+        flex: 1 1 280px !important;
+      } 
+    }
+    
+    @media (max-width: 900px) {
+      .courses-listing-item { 
+        max-width: calc(50% - 12px) !important;
+        flex: 1 1 300px !important;
+      } 
+    }
+    
+    @media (max-width: 640px) {
+      .courses-listing-item { 
+        max-width: 100% !important;
+        flex: 1 1 100% !important;
+      }
+      
+      .search-row { 
+        flex-direction: column; 
+        gap: 20px; 
+        padding: 0;
+      }
+      
+      .discovery-input { 
+        padding-right: 60px; 
+        height: 48px;
+      }
+      
+      #clear-discovery { 
+        right: 20px; 
+      }
+      
+      .discovery-submit { 
+        width: 100%; 
+        height: 48px;
+      }
+    }
+    
+    /* Override legacy CSS */
+    .find-courses .courses-container .courses:not(.no-course-discovery),
+    .university-profile .courses-container .courses:not(.no-course-discovery) {
+      float: none !important;
+      display: block !important;
+      margin-right: 0 !important;
+      width: 100% !important;
+    }
+    
+    .courses-container .courses {
+      display: block !important;
+      float: none !important;
+      width: 100% !important;
+    }
+  </style>
+</%block>
+
+<%block name="js_extra">
+  <script type="text/javascript" src="${static.url('common/js/vendor/bootstrap.bundle.js')}"></script>
+</%block>
+
+% if course_discovery_enabled:
+<%block name="header_extras">
+  % for template_name in ["course_card", "filter_bar", "filter", "facet", "facet_option"]:
+  <script type="text/template" id="${template_name}-tpl">
+    <%static:include path="discovery/${template_name}.underscore" />
+  </script>
+  % endfor
+  <%static:require_module module_name="js/discovery/discovery_factory" class_name="DiscoveryFactory">
+    DiscoveryFactory(
+      ${course_discovery_meanings | n, dump_js_escaped_json},
+      getParameterByName('search_query'),
+      "${user_language | n, js_escaped_string}",
+      "${user_timezone | n, js_escaped_string}",
+      ${set_default_filter | n, dump_js_escaped_json}
+    );
+  </%static:require_module>
+</%block>
+% endif
+
+<%block name="pagetitle">${_("Các khóa học")}</%block>
+
+<main id="main" aria-label="${_('Nội dung')}" tabindex="-1">
+  <section class="find-courses">
+    <div class="courses-main-wrapper">
+      <section class="courses-container">
+
+        % if course_discovery_enabled:
+        <!-- SEARCH -->
+        <div class="search-row">
+          <div class="search-input-wrap">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path fill-rule="evenodd" clip-rule="evenodd" d="M8 4C5.79086 4 4 5.79086 4 8C4 10.2091 5.79086 12 8 12C10.2091 12 12 10.2091 12 8C12 5.79086 10.2091 4 8 4ZM2 8C2 4.68629 4.68629 2 8 2C11.3137 2 14 4.68629 14 8C14 9.29583 13.5892 10.4957 12.8907 11.4765L17.7071 16.2929C18.0976 16.6834 18.0976 17.3166 17.7071 17.7071C17.3166 18.0976 16.6834 18.0976 16.2929 17.7071L11.4765 12.8907C10.4957 13.5892 9.29583 14 8 14C4.68629 14 2 11.3137 2 8Z" fill="#9CA3AF"/>
+            </svg>
+
+            <div id="discovery-form" role="search" aria-label="course" class="wrapper-search-context" data-has-discovery="true">
+              <form id="edx-discovery-search-form" class="wrapper-search-input" novalidate>
+                <label class="sr" for="discovery-input">${_('Tìm kiếm khóa học')}</label>
+                <input id="discovery-input" class="discovery-input" name="search_query" type="text"
+                       placeholder="${_('Khám phá khóa học')}" autocomplete="off" aria-describedby="discovery-message"/>
+                <button id="clear-discovery" type="button" title="${_('Xoá từ khóa')}" aria-label="${_('Xoá từ khóa')}">×</button>
+                <div class="button-holder">
+                  <button type="submit" class="discovery-submit" title="${_('Tìm kiếm')}">${_('Tìm kiếm')}</button>
+                </div>
+              </form>
+              <div id="discovery-message" class="search-status-label" role="status" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hidden filters -->
+        <div id="filter-bar" class="filters hide-phone is-collapsed" aria-hidden="true"></div>
+        <aside class="search-facets" aria-hidden="true">
+          <section class="search-facets-lists" aria-hidden="true"></section>
+        </aside>
+        % endif
+
+        <!-- COURSE GRID -->
+        % if course_discovery_enabled:
+          <div class="course-holder courses" role="region" aria-label="${_('Danh sách khóa học')}">
+            <ul class="courses-listing courses-list"></ul>
+          </div>
+        % else:
+          <div class="course-holder courses no-course-discovery" role="region" aria-label="${_('Danh sách khóa học')}">
+            <ul class="courses-listing courses-list">
+              % for course in courses:
+              <li class="courses-listing-item">
+                <%include file="../course.html" args="course=course" />
+              </li>
+              % endfor
+            </ul>
+          </div>
+        % endif
+
+        % if course_discovery_enabled:
+        <script>
+          (function () {
+            function getParam(name){
+              var m=new RegExp('[?&]'+name+'=([^&]*)').exec(window.location.search);
+              return m&&decodeURIComponent(m[1].replace(/\+/g,' '))||'';
+            }
+            var input = document.getElementById('discovery-input');
+            var form = document.getElementById('edx-discovery-search-form');
+            var clearBtn = document.getElementById('clear-discovery');
+            var msgEl = document.getElementById('discovery-message');
+            var listEl = document.querySelector('.courses-listing');
+
+            // Init from URL
+            var q = getParam('search_query'); 
+            if(q){ 
+              input.value = q; 
+              clearBtn.style.display='inline-block'; 
+            }
+            
+            // Event listeners
+            input.addEventListener('input', function(){ 
+              clearBtn.style.display = input.value.length ? 'inline-block' : 'none'; 
+            });
+            
+            clearBtn.addEventListener('click', function(e){ 
+              e.preventDefault(); 
+              input.value=''; 
+              this.style.display='none'; 
+              input.focus(); 
+            });
+
+            // Force flexbox layout
+            function forceFlexLayout() {
+              if (listEl) {
+                listEl.style.setProperty('display', 'flex', 'important');
+                listEl.style.setProperty('flex-wrap', 'wrap', 'important');
+                listEl.style.setProperty('gap', '24px', 'important');
+                
+                var items = listEl.querySelectorAll('.courses-listing-item');
+                items.forEach(function(item) {
+                  item.style.setProperty('flex', '1 1 280px', 'important');
+                  item.style.setProperty('max-width', 'calc(25% - 18px)', 'important');
+                  
+                  var course = item.querySelector('.course');
+                  if (course) {
+                    course.style.setProperty('width', '100%', 'important');
+                    course.style.setProperty('float', 'none', 'important');
+                  }
+                });
+                
+                console.log('Flexbox layout applied to', items.length, 'courses');
+              }
+            }
+
+            // Apply layout on DOM changes
+            if (window.MutationObserver && listEl) {
+              new MutationObserver(forceFlexLayout).observe(listEl, {childList: true});
+            }
+            
+            // Initial application
+            setTimeout(forceFlexLayout, 100);
+            setTimeout(forceFlexLayout, 500);
+          })();
+        </script>
+        % endif
+
+      </section>
+    </div>
+  </section>
+</main>

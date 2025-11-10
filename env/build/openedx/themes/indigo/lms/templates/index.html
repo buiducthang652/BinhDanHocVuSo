@@ -1,0 +1,1650 @@
+<%page expression_filter="h"/>
+<%inherit file="main.html" />
+<%namespace name='static' file='static_content.html'/>
+<%!
+from django.utils.translation import gettext as _
+from django.urls import reverse
+
+from openedx.core.djangolib.markup import HTML, Text
+%>
+
+<%block name="head_extra">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: #f8f9fa;
+    }
+
+    /* Remove default OpenedX styles */
+    .content-wrapper {
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    main#main {
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    /* 1. HEADER STYLES */
+    .global-header {
+      background: #fff !important;
+      border-bottom: 1px solid #e5e5e5 !important;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+    }
+
+    .global-header .nav-links a {
+      color: #333 !important;
+      text-decoration: none !important;
+    }
+
+    .global-header .nav-links a:hover {
+      color: #007bff !important;
+    }
+
+    /* Header Button Styles */
+    .global-header .nav-links .btn {
+      padding: 8px 16px !important;
+      border-radius: 6px !important;
+      font-weight: 500 !important;
+      text-decoration: none !important;
+      border: 1px solid transparent !important;
+      transition: all 0.3s ease !important;
+      display: inline-block !important;
+      margin-left: 8px !important;
+    }
+
+    /* Register Button - Outline Style */
+    .global-header .nav-links .register-btn {
+      color: #007bff !important;
+      border-color: #007bff !important;
+      background: transparent !important;
+    }
+
+    .global-header .nav-links .register-btn:hover {
+      background: #007bff !important;
+      color: #fff !important;
+      text-decoration: none !important;
+    }
+
+    /* Sign In Button - Filled Style */
+    .global-header .nav-links .sign-in-btn {
+      background: #007bff !important;
+      color: #fff !important;
+      border-color: #007bff !important;
+    }
+
+    .global-header .nav-links .sign-in-btn:hover {
+      background: #0056b3 !important;
+      border-color: #0056b3 !important;
+      color: #fff !important;
+      text-decoration: none !important;
+    }
+
+    /* 2. HERO SLIDER - Soft & Modern Design */
+    .mi1-hero-slider {
+      position: relative;
+      width: 100%;
+      max-width: 1400px;
+      margin: 30px auto;
+      padding: 0 20px;
+      height: 350px;
+      overflow: visible;
+      border-radius: 0;
+      box-shadow: none;
+      border: none;
+    }
+
+    .mi1-slider-container {
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 32px 80px rgba(0, 0, 0, 0.12), 0 8px 32px rgba(0, 0, 0, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      height: 100%;
+      position: relative;
+      width: 100%;
+    }
+
+    .mi1-slider-wrapper {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    .mi1-slider-wrapper .mi1-slide {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .mi1-slide {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      flex-shrink: 0;
+      opacity: 0;
+      transition: opacity 0.8s ease-in-out;
+    }
+
+    .mi1-slide.mi1-active {
+      opacity: 1;
+      z-index: 2;
+    }
+
+    /* Ensure first slide is visible by default */
+    .mi1-slide:first-child {
+      opacity: 1;
+      z-index: 2;
+    }
+
+    .mi1-slide-bg {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      border-radius: 24px;
+      transition: transform 0.6s ease;
+    }
+
+    .mi1-slide-bg::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+    }
+
+    .mi1-slide-content {
+      display: none;
+    }
+
+    .mi1-slide-content h1 {
+      display: block;
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 20px;
+      text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
+    }
+
+    .mi1-slide-content p {
+      display: block;
+      font-size: 1.1rem;
+      color: #ffffff;
+      margin-bottom: 25px;
+      line-height: 1.6;
+      text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.6);
+    }
+
+    .mi1-slide-content .mi1-cta-button {
+      display: inline-block;
+    }
+
+    .mi1-slide-content .mi1-cta-button:hover {
+      background: #fff;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      color: #333;
+      text-decoration: none;
+    }
+
+    /* Slider Navigation - Modern & Soft */
+    .mi1-slider-dots {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      z-index: 3;
+      background: rgba(255, 255, 255, 0.15);
+      padding: 12px 20px;
+      border-radius: 30px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .mi1-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.4);
+      cursor: pointer;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+
+    .mi1-dot:hover {
+      background: rgba(255, 255, 255, 0.7);
+      transform: scale(1.2);
+    }
+
+    .mi1-dot.mi1-active {
+      background: #fff;
+      transform: scale(1.4);
+      box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+    }
+
+    /* Content Overlay - Removed for crisp image display */
+    .mi1-slide-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      z-index: 2;
+      padding: 30px 40px;
+      border-radius: 20px;
+      max-width: 600px;
+      width: 90%;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
+      50% { transform: translate(-50%, -50%) translateY(-10px); }
+    }
+
+    .mi1-slide-overlay h2 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #2c3e50;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .mi1-slide-overlay p {
+      font-size: 1.2rem;
+      color: #5a6c7d;
+      margin-bottom: 30px;
+      line-height: 1.6;
+    }
+
+    .mi1-cta-button {
+      display: inline-block;
+      padding: 15px 30px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      text-decoration: none;
+      border-radius: 50px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    }
+
+    .mi1-cta-button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
+      text-decoration: none;
+      color: white;
+    }
+
+    .mi1-slider-prev,
+    .mi1-slider-next {
+      display: none;
+    }
+
+    .mi1-hero-dots {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+      z-index: 20;
+    }
+
+    .mi1-hero-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.4);
+      border: 2px solid rgba(255, 255, 255, 0.6);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+    }
+
+    .mi1-hero-dot.active {
+      background: white;
+      transform: scale(1.2);
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+    }
+
+    .mi1-hero-dot:hover {
+      background: rgba(255, 255, 255, 0.7);
+      transform: scale(1.1);
+    }
+
+    /* Floating animations for content */
+    @keyframes floatIn {
+      0% {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes gentleFloat {
+      0%, 100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(-5px);
+      }
+    }
+
+    .mi1-slide-content {
+      animation: gentleFloat 6s ease-in-out infinite;
+    }
+
+    /* Responsive improvements for soft design */
+    @media (max-width: 768px) {
+      .mi1-hero-slider {
+        height: 280px;
+        margin: 20px auto;
+        padding: 0 15px;
+      }
+      
+      .mi1-slide-overlay {
+        padding: 20px 25px;
+      }
+      
+      .mi1-slide-content h1 {
+        font-size: 2rem;
+      }
+      
+      .mi1-slide-content p {
+        font-size: 1rem;
+      }
+      
+      .mi1-cta-button {
+        padding: 12px 24px;
+        font-size: 0.9rem;
+      }
+    }
+
+    /* Old banner styles kept for fallback */
+    .banner-content {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    .banner-title {
+      font-size: 2.5rem;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    .banner-subtitle {
+      font-size: 1.2rem;
+      color: #666;
+      margin-bottom: 0;
+    }
+
+    /* 3. COURSES SECTION WITH SEARCH */
+    .mi1-courses-section {
+      background: #fff;
+      padding: 20px 0;
+    }
+
+    /* Search within courses section */
+    .mi1-courses-container .mi1-search-container {
+      max-width: 800px;
+      margin: 0 auto 60px auto;
+    }
+
+    .mi1-search-form {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background: #fff;
+      border: 2px solid #e5e5e5;
+      border-radius: 50px;
+      padding: 4px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .mi1-search-form:focus-within {
+      border-color: #007bff;
+      box-shadow: 0 4px 20px rgba(0, 123, 255, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .mi1-search-input {
+      flex: 1 !important;
+      padding: 16px 20px 16px 50px !important;
+      border: none !important;
+      outline: none !important;
+      font-size: 16px !important;
+      color: #333 !important;
+      background: transparent !important;
+      border-radius: 50px !important;
+      box-shadow: none !important;
+      -webkit-appearance: none !important;
+      -moz-appearance: none !important;
+      appearance: none !important;
+      font-family: 'Inter', sans-serif !important;
+      font-weight: 400 !important;
+      font-style: normal !important;
+      height: auto !important;
+      vertical-align: top !important;
+    }
+
+    .mi1-search-form .mi1-search-input {
+      flex: 1 !important;
+      padding: 16px 20px 16px 50px !important;
+      border: none !important;
+      outline: none !important;
+      font-size: 16px !important;
+      color: #333 !important;
+      background: transparent !important;
+      border-radius: 50px !important;
+      box-shadow: none !important;
+      -webkit-appearance: none !important;
+      -moz-appearance: none !important;
+      appearance: none !important;
+      font-family: 'Inter', sans-serif !important;
+      font-weight: 400 !important;
+      font-style: normal !important;
+      height: auto !important;
+      vertical-align: top !important;
+    }
+
+    .mi1-search-input:focus {
+      outline: none !important;
+      border: none !important;
+      box-shadow: none !important;
+      background: transparent !important;
+    }
+
+    .mi1-search-form .mi1-search-input:focus {
+      outline: none !important;
+      border: none !important;
+      box-shadow: none !important;
+      background: transparent !important;
+    }
+
+    .mi1-search-input::placeholder {
+      color: #888 !important;
+      font-weight: 400 !important;
+      font-style: normal !important;
+      font-family: 'Inter', sans-serif !important;
+    }
+
+    .mi1-search-icon {
+      position: absolute;
+      left: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #888;
+      font-size: 18px;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .mi1-search-button {
+      background: linear-gradient(135deg, #007bff, #0056b3);
+      color: white;
+      border: none;
+      outline: none;
+      padding: 14px 28px;
+      border-radius: 50px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 15px;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+      min-width: 120px;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+    }
+
+    .mi1-search-button:focus {
+      outline: none;
+      border: none;
+    }
+
+    .mi1-search-button:hover {
+      background: linear-gradient(135deg, #0056b3, #004494);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4);
+    }
+
+    .mi1-search-button:active {
+      transform: translateY(0);
+    }
+
+    .mi1-section-title {
+      font-size: 2rem;
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 40px;
+      color: #333;
+    }
+
+    .mi1-courses-container {
+      width: 100% !important;
+      max-width: 1400px;
+      padding: 0 20px;
+      margin: 0 auto;
+    }
+
+    .mi1-courses-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 30px;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    /* Responsive breakpoints for course grid */
+    @media (min-width: 1401px) {
+      .mi1-courses-container,
+      .mi1-footer-content {
+        padding: 0 20px;
+      }
+    }
+
+    @media (max-width: 1400px) {
+      .mi1-courses-container {
+        padding: 0 20px;
+      }
+    }
+
+    @media (max-width: 1200px) {
+      .mi1-courses-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 25px;
+      }
+      
+      .mi1-courses-container {
+        padding: 0 20px;
+      }
+    }
+
+    @media (max-width: 992px) {
+      .mi1-courses-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .mi1-courses-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+      }
+      
+      .mi1-courses-container {
+        padding: 0 15px;
+      }
+      
+      .mi1-course-image {
+        height: 160px;
+      }
+      
+      .mi1-course-info {
+        padding: 20px;
+      }
+      
+      .mi1-course-title {
+        font-size: 16px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .mi1-courses-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+      
+      .mi1-course-image {
+        height: 180px;
+      }
+      
+      .mi1-course-info {
+        padding: 20px;
+      }
+      
+      .mi1-course-title {
+        font-size: 17px;
+      }
+      
+      .mi1-course-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+    }
+
+    .mi1-course-item {
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      border: 1px solid #f0f0f0;
+    }
+
+    .mi1-course-item:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .mi1-course-card-link {
+      text-decoration: none !important;
+      color: inherit !important;
+      display: block;
+    }
+
+    .mi1-course-image {
+      height: 200px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .mi1-course-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+
+    .mi1-course-item:hover .mi1-course-image img {
+      transform: scale(1.05);
+    }
+
+    .mi1-course-placeholder {
+      height: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+
+    .mi1-course-overlay {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+    }
+
+    .mi1-course-level {
+      background: rgba(0, 123, 255, 0.9);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 16px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .mi1-course-info {
+      padding: 24px;
+    }
+
+    .mi1-course-header {
+      margin-bottom: 16px;
+    }
+
+    .mi1-course-code {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 12px;
+      color: #007bff;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      letter-spacing: 0.8px;
+    }
+
+    .mi1-course-title {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin: 0 0 12px 0;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .mi1-course-description {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      color: #666;
+      line-height: 1.6;
+      margin: 0 0 16px 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .mi1-course-prerequisites {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 12px;
+      color: #e67e22;
+      background: #fef5e7;
+      padding: 6px 10px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+    }
+
+    .mi1-course-prerequisites svg {
+      width: 14px;
+      height: 14px;
+      color: #e67e22;
+    }
+
+    .mi1-course-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .mi1-course-date,
+    .mi1-course-enrollment {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      color: #666;
+      background: #f8f9fa;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border-left: 3px solid #007bff;
+    }
+
+    .mi1-course-date {
+      background: #e8f5e8;
+      border-left-color: #28a745;
+      color: #2d5016;
+    }
+
+    .mi1-course-date svg,
+    .mi1-course-enrollment svg {
+      width: 16px;
+      height: 16px;
+      color: #999;
+    }
+
+    .mi1-course-instructor,
+    .mi1-course-effort,
+    .mi1-course-language {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      color: #666;
+    }
+
+    .mi1-course-instructor svg,
+    .mi1-course-effort svg,
+    .mi1-course-language svg {
+      width: 16px;
+      height: 16px;
+      color: #999;
+    }
+
+    .mi1-course-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 16px;
+      border-top: 1px solid #f0f0f0;
+    }
+
+    .mi1-course-price {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-weight: 600;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .mi1-course-pacing {
+      background: #e8f5e8;
+      color: #2d5016;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .mi1-course-end-date {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #fef0e7;
+      color: #c0392b;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 12px;
+    }
+
+    .mi1-course-weeks {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #e8f4fd;
+      color: #2980b9;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 12px;
+    }
+
+    .mi1-course-end-date svg,
+    .mi1-course-weeks svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    .mi1-course-certificate {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #fff3cd;
+      color: #856404;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 12px;
+    }
+
+    .mi1-course-certificate svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    .mi1-price-amount {
+      color: #28a745;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .mi1-price-free {
+      color: #007bff;
+      font-size: 13px;
+      font-weight: 600;
+      background: #e3f2fd;
+      padding: 6px 12px;
+      border-radius: 16px;
+    }
+
+    .mi1-enrolled-badge {
+      background: #28a745;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 16px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .mi1-enroll-text {
+      color: #007bff;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    /* Empty state */
+    .mi1-empty-state {
+      text-align: center;
+      padding: 80px 20px;
+    }
+
+    .mi1-empty-state h3 {
+      font-size: 1.5rem;
+      color: #333;
+      margin-bottom: 16px;
+    }
+
+    .mi1-empty-state p {
+      color: #666;
+      margin-bottom: 30px;
+    }
+
+    .mi1-cta-button {
+      display: inline-block;
+      background: #007bff;
+      color: white;
+      padding: 12px 30px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 500;
+      transition: background 0.3s ease;
+    }
+
+    .mi1-cta-button:hover {
+      background: #0056b3;
+      color: white;
+      text-decoration: none;
+    }
+
+    /* 5. FOOTER */
+    .mi1-simple-footer {
+      background: #f8f9fa;
+      padding: 40px 0;
+      border-top: 1px solid #e5e5e5;
+      text-align: center;
+    }
+
+    .mi1-footer-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 30px;
+    }
+
+    .mi1-footer-links {
+      display: block !important;
+      justify-content: unset !important;
+      gap: unset !important;
+      margin-bottom: 0 !important;
+      flex-wrap: unset !important;
+    }
+
+    .mi1-footer-links a {
+      color: #666;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .mi1-footer-links a:hover {
+      color: #007bff;
+    }
+
+    .mi1-footer-text {
+      color: #999;
+      font-size: 14px;
+    }
+
+    /* Additional responsive for other elements */
+    @media (max-width: 768px) {
+      .mi1-hero-slider {
+        height: 300px;
+      }
+
+      .mi1-slide-content h1 {
+        font-size: 2.2rem;
+      }
+
+      .mi1-slide-content p {
+        font-size: 1.1rem;
+      }
+
+      .mi1-slider-prev,
+      .mi1-slider-next {
+        width: 40px;
+        height: 40px;
+      }
+
+      .mi1-slider-prev {
+        left: 15px;
+      }
+
+      .mi1-slider-next {
+        right: 15px;
+      }
+
+      .banner-title {
+        font-size: 2rem;
+      }
+
+      .banner-subtitle {
+        font-size: 1.1rem;
+      }
+
+      .mi1-search-form {
+        padding: 3px;
+        border-radius: 30px;
+      }
+      
+      .mi1-search-input {
+        padding: 12px 16px 12px 40px !important;
+        font-size: 14px !important;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        border-radius: 30px !important;
+      }
+      
+      .mi1-search-icon {
+        left: 15px;
+        font-size: 16px;
+      }
+      
+      .mi1-search-button {
+        padding: 10px 18px;
+        font-size: 14px;
+        min-width: 90px;
+      }
+
+      .mi1-footer-links {
+        flex-direction: column;
+        gap: 15px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .mi1-search-form {
+        padding: 2px;
+        border-radius: 25px;
+        flex-direction: column;
+        gap: 8px;
+      }
+      
+      .mi1-search-input {
+        padding: 12px 20px !important;
+        font-size: 14px !important;
+        text-align: center !important;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        border-radius: 20px !important;
+      }
+      
+      .mi1-search-icon {
+        display: none;
+      }
+      
+      .mi1-search-button {
+        padding: 12px 20px;
+        font-size: 14px;
+        min-width: auto;
+        align-self: stretch;
+        border-radius: 20px;
+      }
+      
+      .mi1-courses-container .mi1-search-container {
+        margin-bottom: 30px;
+      }
+    }
+
+    /* Hide original content */
+    .home.style-logout .outer-wrapper,
+    .home.style-logout .title,
+    .home.style-logout .heading-group {
+      display: none !important;
+    }
+  </style>
+</%block>
+
+<main id="main" aria-label="Nội dung" tabindex="-1">
+  <!-- 2. SLIDER BANNER SECTION -->
+  <section class="mi1-hero-slider">
+    <div class="mi1-slider-container">
+      <div class="mi1-slider-wrapper">
+        <!-- Slide 1 -->
+        <div class="mi1-slide mi1-active">
+          <div class="mi1-slide-bg" style="background-image: url('http://hnue.edu.vn/api/v1//Portals/Slideshow/638681904814806276.jpg');"></div>
+          <div class="mi1-slide-overlay">
+            <div class="mi1-slide-content">
+              <h1>Chào mừng đến với HNUE EdX</h1>
+              <p>Khám phá hành trình học tập trực tuyến đầy cảm hứng cùng các khóa học chất lượng cao từ Đại học Sư phạm Hà Nội</p>
+              <a href="/courses" class="mi1-cta-button">Khám phá khóa học</a>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Slide 2 -->
+        <div class="mi1-slide">
+          <div class="mi1-slide-bg" style="background-image: url('https://hnue.edu.vn/api/v1//Portals/Slideshow/638681904264481281.jpg');"></div>
+          <div class="mi1-slide-overlay">
+            <div class="mi1-slide-content">
+              <h1>Học tập không giới hạn</h1>
+              <p>Nâng cao kiến thức và kỹ năng với các khóa học đa dạng, từ cơ bản đến nâng cao, phù hợp với mọi đối tượng học viên</p>
+              <a href="/register" class="mi1-cta-button">Bắt đầu ngay</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Navigation dots -->
+      <div class="mi1-hero-dots">
+        <span class="mi1-hero-dot mi1-active" data-slide="0"></span>
+        <span class="mi1-hero-dot" data-slide="1"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. COURSES SECTION WITH SEARCH -->
+  % if courses:
+  <section class="mi1-courses-section">
+    <div class="mi1-courses-container">
+      % if settings.FEATURES.get('ENABLE_COURSE_DISCOVERY'):
+      <div class="mi1-search-container">
+        <form method="get" action="/courses" class="mi1-search-form">
+          <span class="mi1-search-icon">🔍</span>
+          <input class="mi1-search-input" name="search_query" type="text" placeholder="Tìm kiếm khóa học, chủ đề, giảng viên..." />
+          <button class="mi1-search-button" type="submit">Tìm kiếm</button>
+        </form>
+      </div>
+      % endif
+      
+      <div class="mi1-courses-grid">
+        % for course in courses[:8]:  ## Show first 8 courses
+        <div class="mi1-course-item">
+          <a href="/courses/${course.id}/about" class="mi1-course-card-link">
+            <div class="mi1-course-image">
+              <%
+                course_image = None
+                try:
+                  course_image = course.course_image_url if hasattr(course, 'course_image_url') else None
+                except:
+                  course_image = None
+              %>
+              % if course_image:
+                <img src="${course_image}" alt="${course.display_name_with_default | h}" loading="lazy" />
+              % else:
+                <div class="mi1-course-placeholder">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                </div>
+              % endif
+              <div class="mi1-course-overlay">
+                <div class="mi1-course-level">
+                  <%
+                    course_level = None
+                    try:
+                      course_level = course.course_level if hasattr(course, 'course_level') else None
+                      if not course_level:
+                        course_level = course.effort if hasattr(course, 'effort') else None
+                    except:
+                      course_level = None
+                  %>
+                  % if course_level:
+                    ${course_level}
+                  % else:
+                    Cơ bản
+                  % endif
+                </div>
+              </div>
+            </div>
+            
+            <div class="mi1-course-info">
+              <div class="mi1-course-header">
+                <%
+                  course_org = None
+                  course_number = None
+                  try:
+                    course_org = course.display_organization if hasattr(course, 'display_organization') else None
+                    course_number = course.display_number_with_default if hasattr(course, 'display_number_with_default') else None
+                  except:
+                    course_org = None
+                    course_number = None
+                %>
+                % if course_org:
+                  <div class="mi1-course-code">
+                    % if course_number:
+                      ${course_org} - ${course_number}
+                    % else:
+                      ${course_org}
+                    % endif
+                  </div>
+                % endif
+                <h3 class="mi1-course-title">${course.display_name_with_default | h}</h3>
+              </div>
+              
+              <%
+                course_desc = None
+                course_prerequisites = None
+                try:
+                  course_desc = course.short_description if hasattr(course, 'short_description') else None
+                  if not course_desc:
+                    course_desc = course.description if hasattr(course, 'description') else None
+                  
+                  # Try to get prerequisites
+                  course_prerequisites = getattr(course, 'prerequisites', None)
+                  if not course_prerequisites:
+                    course_prerequisites = getattr(course, 'prerequisite_courses', None)
+                except:
+                  course_desc = None
+                  course_prerequisites = None
+              %>
+              % if course_desc:
+                <p class="mi1-course-description">${course_desc | h}</p>
+              % endif
+              
+              % if course_prerequisites:
+                <div class="mi1-course-prerequisites">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 11H1v3h8v3l8-5-8-5v3z"/>
+                  </svg>
+                  <span>Yêu cầu: ${course_prerequisites}</span>
+                </div>
+              % endif
+              
+              <div class="mi1-course-meta">
+                <%
+                  start_date = None
+                  instructor_name = None
+                  course_effort = None
+                  course_language = None
+                  try:
+                    # Try multiple sources for start date
+                    start_date = getattr(course, 'start_date_text', None)
+                    if not start_date:
+                      start_date = getattr(course, 'start_display_text', None)
+                    if not start_date:
+                      start_date_obj = getattr(course, 'start', None)
+                      if start_date_obj:
+                        try:
+                          if hasattr(start_date_obj, 'strftime'):
+                            start_date = start_date_obj.strftime('%d/%m/%Y')
+                          else:
+                            start_date = str(start_date_obj)
+                        except:
+                          start_date = 'Bắt đầu ngay'
+                    if not start_date:
+                      start_date = 'Bắt đầu ngay'
+                    
+                    # Try to get instructor information
+                    if hasattr(course, 'instructor_info') and course.instructor_info:
+                      instructor_name = course.instructor_info.get('instructor_name', None)
+                    elif hasattr(course, 'course_staff') and course.course_staff:
+                      instructor_name = course.course_staff[0].get('name', None) if course.course_staff else None
+                    
+                    # Course effort/workload
+                    course_effort = getattr(course, 'effort', None)
+                    if not course_effort:
+                      course_effort = getattr(course, 'workload', None)
+                    
+                    # Course language
+                    course_language = getattr(course, 'language', None)
+                    if course_language == 'vi' or course_language == 'vi-vn':
+                      course_language = 'Tiếng Việt'
+                    elif course_language == 'en' or course_language == 'en-us':
+                      course_language = 'Tiếng Anh'
+                  except:
+                    start_date = 'Bắt đầu ngay'
+                    instructor_name = None
+                    course_effort = None
+                    course_language = None
+                %>
+                <!-- Always show start date since we have fallback -->
+                <div class="mi1-course-date">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  <span>
+                    % if start_date == "Bắt đầu ngay":
+                      Bắt đầu ngay
+                    % else:
+                      Bắt đầu: ${start_date}
+                    % endif
+                  </span>
+                </div>
+                
+                % if instructor_name:
+                  <div class="mi1-course-instructor">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                      <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <span>Giảng viên: ${instructor_name}</span>
+                  </div>
+                % endif
+                
+                <%
+                  enrollment_count = None
+                  course_duration = None
+                  try:
+                    enrollment_count = getattr(course, 'enrollment_count', None)
+                    course_duration = getattr(course, 'duration', None)
+                  except:
+                    enrollment_count = None
+                    course_duration = None
+                %>
+                
+                % if enrollment_count and enrollment_count > 0:
+                  <div class="mi1-course-enrollment">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                      <circle cx="9" cy="7" r="4"/>
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    <span>${enrollment_count} học viên</span>
+                  </div>
+                % elif course_duration:
+                  <div class="mi1-course-enrollment">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <polyline points="12,6 12,12 16,14"/>
+                    </svg>
+                    <span>Thời lượng: ${course_duration}</span>
+                  </div>
+                % endif
+                
+                % if course_effort:
+                  <div class="mi1-course-effort">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <path d="M12 6v6l4 2"/>
+                    </svg>
+                    <span>Khuyến nghị: ${course_effort}</span>
+                  </div>
+                % endif
+                
+                % if course_language:
+                  <div class="mi1-course-language">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <path d="M2 12h20"/>
+                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                    </svg>
+                    <span>Ngôn ngữ: ${course_language}</span>
+                  </div>
+                % endif
+              </div>
+              
+              <div class="mi1-course-footer">
+                <div class="mi1-course-info-footer">
+                  <div class="mi1-course-price">
+                    <%
+                      first_mode = None
+                      has_certificate = False
+                      end_date = None
+                      weeks_to_complete = None
+                      
+                      if hasattr(course, 'modes') and course.modes:
+                        try:
+                          first_mode = course.modes.first()
+                        except:
+                          try:
+                            first_mode = course.modes.all()[0] if course.modes.all() else None
+                          except:
+                            first_mode = None
+                      
+                      # Check end date
+                      try:
+                        end_date = getattr(course, 'end_date_text', None)
+                        if not end_date:
+                          end_date = getattr(course, 'end_date', None)
+                          if end_date:
+                            end_date = end_date.strftime('%d/%m/%Y') if hasattr(end_date, 'strftime') else str(end_date)
+                      except:
+                        end_date = None
+                      
+                      # Check weeks to complete
+                      try:
+                        weeks_to_complete = getattr(course, 'weeks_to_complete', None)
+                        if not weeks_to_complete:
+                          weeks_to_complete = getattr(course, 'estimated_weeks', None)
+                      except:
+                        weeks_to_complete = None
+                      
+                      # Check certificate
+                      try:
+                        has_certificate = getattr(course, 'has_certificates', False)
+                        if not has_certificate and first_mode:
+                          has_certificate = getattr(first_mode, 'certificate', False)
+                      except:
+                        has_certificate = False
+                    %>
+                    % if first_mode and hasattr(first_mode, 'min_price') and first_mode.min_price > 0:
+                      <span class="mi1-price-amount">${int(first_mode.min_price)}₫</span>
+                    % else:
+                      <span class="mi1-price-free"></span>
+                    % endif
+                    
+                    % if end_date:
+                      <span class="mi1-course-end-date">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                          <line x1="16" y1="2" x2="16" y2="6"/>
+                          <line x1="8" y1="2" x2="8" y2="6"/>
+                          <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        Kết thúc: ${end_date}
+                      </span>
+                    % endif
+                    
+                    % if weeks_to_complete:
+                      <span class="mi1-course-weeks">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <circle cx="12" cy="12" r="10"/>
+                          <path d="M12 6v6l4 2"/>
+                        </svg>
+                        ${weeks_to_complete} tuần
+                      </span>
+                    % endif
+                    
+                    % if has_certificate:
+                      <span class="mi1-course-certificate">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                        Chứng chỉ
+                      </span>
+                    % endif
+                  </div>
+                </div>
+                <div class="mi1-course-action">
+                  <%
+                    is_enrolled = False
+                    try:
+                      is_enrolled = course.user_has_enrolled if hasattr(course, 'user_has_enrolled') else False
+                    except:
+                      is_enrolled = False
+                  %>
+                  % if is_enrolled:
+                    <span class="mi1-enrolled-badge">Vào học</span>
+                  % else:
+                    <span class="mi1-enroll-text">Vào học</span>
+                  % endif
+                </div>
+              </div>
+            </div>
+          </a>
+        </div>
+        % endfor
+      </div>
+    </div>
+  </section>
+  % else:
+  <!-- Empty state when no courses available -->
+  <section class="mi1-courses-section">
+    <div class="mi1-courses-container">
+      % if settings.FEATURES.get('ENABLE_COURSE_DISCOVERY'):
+      <div class="mi1-search-container">
+        <form method="get" action="/courses" class="mi1-search-form">
+          <span class="mi1-search-icon">🔍</span>
+          <input class="mi1-search-input" name="search_query" type="text" placeholder="Tìm kiếm khóa học, chủ đề, giảng viên..." />
+          <button class="mi1-search-button" type="submit">Tìm kiếm</button>
+        </form>
+      </div>
+      % endif
+      <div class="mi1-empty-state">
+        <h3>Bắt đầu hành trình học tập ngay hôm nay</h3>
+        <p>Tham gia cùng hàng nghìn học viên đang phát triển kỹ năng mỗi ngày</p>
+        
+        % if 'user' in locals() and hasattr(user, 'is_authenticated') and user.is_authenticated:
+          <a href="/courses" class="mi1-cta-button">Khám phá khóa học</a>
+        % else:
+          <a href="/register" class="mi1-cta-button">Đăng ký miễn phí</a>
+        % endif
+      </div>
+    </div>
+  </section>
+  % endif
+
+  <!-- Keep original course list hidden -->
+  <div style="display: none;">
+    <%include file="${courses_list}" />
+  </div>
+</main>
+
+% if 'show_homepage_promo_video' in locals() and show_homepage_promo_video:
+  <section id="video-modal" class="modal home-page-video-modal video-modal">
+    <div class="inner-wrapper">
+      <iframe title="YouTube Video" width="640" height="360" src="//www.youtube.com/embed/${'homepage_promo_video_youtube_id' in locals() and homepage_promo_video_youtube_id or ''}?showinfo=0" frameborder="0" allowfullscreen></iframe>
+    </div>
+  </section>
+% endif
+
+<%block name="js_extra">
+   <script type="text/javascript">
+      $(window).load(function() {
+         if(getParameterByName('next')) {
+              $('#login').trigger("click");
+         }
+      })
+      
+      // Wait for DOM to be fully loaded
+      document.addEventListener('DOMContentLoaded', function() {
+        // Slider functionality with smooth animations
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.mi1-slide');
+        const dots = document.querySelectorAll('.mi1-hero-dot');
+        const totalSlides = 2;
+        
+        // Initialize first slide
+        if (slides.length > 0) {
+          slides[0].classList.add('mi1-active');
+        }
+        if (dots.length > 0) {
+          dots[0].classList.add('active');
+        }
+      
+      function showSlide(index) {
+        // Remove active from all
+        slides.forEach(slide => slide.classList.remove('mi1-active'));
+        dots.forEach(dot => dot.classList.remove('active'));
+        
+        // Add active to current
+        slides[index].classList.add('mi1-active');
+        dots[index].classList.add('active');
+        
+        currentSlide = index;
+      }
+      
+      function nextSlide() {
+        const next = (currentSlide + 1) % totalSlides;
+        showSlide(next);
+      }
+      
+      function prevSlide() {
+        const prev = (currentSlide - 1 + totalSlides) % totalSlides;
+        showSlide(prev);
+      }
+      
+      // Dot navigation with smooth transition
+      dots.forEach((dot, index) => {
+        dot.addEventListener('click', () => {
+          if (index !== currentSlide) {
+            showSlide(index);
+          }
+        });
+      });
+      
+      // Auto-play with pause on interaction
+      let autoPlayInterval;
+      
+      function startAutoPlay() {
+        autoPlayInterval = setInterval(nextSlide, 6000); // Slower, more relaxed
+      }
+      
+      function stopAutoPlay() {
+        clearInterval(autoPlayInterval);
+      }
+      
+      const sliderContainer = document.querySelector('.mi1-hero-slider');
+      sliderContainer?.addEventListener('mouseenter', stopAutoPlay);
+      sliderContainer?.addEventListener('mouseleave', startAutoPlay);
+      
+      // Touch/swipe support for mobile
+      let startX = 0;
+      let endX = 0;
+      
+      sliderContainer?.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+      });
+      
+      sliderContainer?.addEventListener('touchend', (e) => {
+        endX = e.changedTouches[0].clientX;
+        const diff = startX - endX;
+        
+        if (Math.abs(diff) > 50) { // Minimum swipe distance
+          if (diff > 0) {
+            nextSlide();
+          } else {
+            prevSlide();
+          }
+        }
+      });
+      
+      // Start auto-play
+      startAutoPlay();
+      
+    }); // End DOMContentLoaded
+   </script>
+</%block>
+
+% if show_signup_immediately is not UNDEFINED:
+  ## NOTE: This won't work in production, because anonymous views are cached, so it will
+  ## show either with or without this extra js for 3 minutes at a time.
+<script type="text/javascript">
+  $(window).load(function() {$('#signup_action').trigger("click");});
+</script>
+% endif

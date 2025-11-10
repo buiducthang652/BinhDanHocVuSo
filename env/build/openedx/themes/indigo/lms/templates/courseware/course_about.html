@@ -1,0 +1,961 @@
+<%page expression_filter="h"/>
+<%namespace name='static' file='../static_content.html'/>
+<%!
+from django.utils.translation import gettext as _
+from django.utils.translation import pgettext
+from django.urls import reverse
+from lms.djangoapps.courseware.courses import get_course_about_section
+from django.conf import settings
+from common.djangoapps.edxmako.shortcuts import marketing_link
+from openedx.core.djangolib.js_utils import js_escaped_string
+from openedx.core.djangolib.markup import clean_dangerous_html, HTML, Text
+from openedx.core.lib.courses import course_image_url
+%>
+
+<%inherit file="../main.html" />
+
+<%block name="head_extra">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap&subset=vietnamese" rel="stylesheet"/>
+  
+  <style>
+    /* GLOBAL RESET FOR COURSE ABOUT PAGE */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif !important;
+      line-height: 1.6;
+      color: #333;
+      background: #f8f9fa !important;
+    }
+
+    /* Remove default OpenedX styles */
+    .content-wrapper {
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    main#main {
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    /* COURSE HERO SECTION - Enhanced Modern Design */
+    .ma1-course-hero {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 80px 0 100px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ma1-course-hero::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%);
+      z-index: 1;
+    }
+
+    .ma1-course-hero::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.1) 100%);
+      z-index: 2;
+    }
+
+    .ma1-course-hero-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 60px;
+      align-items: center;
+      position: relative;
+      z-index: 3;
+    }
+
+    .ma1-course-info-main {
+      color: white;
+    }
+
+    .ma1-course-org {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      padding: 8px 20px;
+      border-radius: 25px;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 20px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .ma1-course-title {
+      font-size: 3.2rem;
+      font-weight: 700;
+      color: white;
+      margin-bottom: 24px;
+      line-height: 1.2;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .ma1-course-description {
+      font-size: 1.3rem;
+      color: rgba(255, 255, 255, 0.9);
+      line-height: 1.6;
+      margin-bottom: 40px;
+      max-width: 600px;
+      text-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    .ma1-enrollment-section {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .ma1-enrollment-section .register,
+    .ma1-enrollment-section .ma1-view-course-button,
+    .ma1-enrollment-section a[class*="register"],
+    .ma1-enrollment-section a[class*="add-to-cart"],
+    .ma1-enrollment-section a.register,
+    .ma1-enrollment-section span.register {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px 40px;
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+      color: white !important;
+      text-decoration: none !important;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 18px;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 8px 32px rgba(255, 107, 107, 0.4);
+      min-width: 200px;
+      position: relative;
+      overflow: hidden;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .ma1-enrollment-section .register::before,
+    .ma1-enrollment-section .ma1-view-course-button::before,
+    .ma1-enrollment-section a[class*="register"]::before,
+    .ma1-enrollment-section a[class*="add-to-cart"]::before,
+    .ma1-enrollment-section a.register::before,
+    .ma1-enrollment-section span.register::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      transition: left 0.6s ease;
+    }
+
+    .ma1-enrollment-section .register:hover,
+    .ma1-enrollment-section .ma1-view-course-button:hover,
+    .ma1-enrollment-section a[class*="register"]:hover,
+    .ma1-enrollment-section a[class*="add-to-cart"]:hover,
+    .ma1-enrollment-section a.register:hover,
+    .ma1-enrollment-section span.register:hover {
+      background: linear-gradient(135deg, #ee5a24 0%, #c0392b 100%);
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 15px 45px rgba(255, 107, 107, 0.6);
+      color: white !important;
+      text-decoration: none !important;
+    }
+
+    .ma1-enrollment-section .register:hover::before,
+    .ma1-enrollment-section .ma1-view-course-button:hover::before,
+    .ma1-enrollment-section a[class*="register"]:hover::before,
+    .ma1-enrollment-section a[class*="add-to-cart"]:hover::before,
+    .ma1-enrollment-section a.register:hover::before,
+    .ma1-enrollment-section span.register:hover::before {
+      left: 100%;
+    }
+
+    .ma1-enrollment-section .register.disabled,
+    .ma1-enrollment-section span.register.disabled {
+      background: rgba(255, 255, 255, 0.3);
+      color: rgba(255, 255, 255, 0.7);
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .ma1-enrollment-section .register.disabled:hover,
+    .ma1-enrollment-section span.register.disabled:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* Course Media Section */
+    .ma1-course-media {
+      position: relative;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      border: 3px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .ma1-course-image {
+      width: 100%;
+      height: 280px;
+      border-radius: 16px;
+      object-fit: cover;
+      transition: transform 0.4s ease;
+      filter: brightness(1.1) contrast(1.1);
+    }
+
+    .ma1-course-media .media {
+      position: relative;
+      display: block;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .ma1-course-media .media:hover .ma1-course-image {
+      transform: scale(1.05);
+    }
+
+    .ma1-play-button {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90px;
+      height: 90px;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #667eea;
+      transition: all 0.4s ease;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+    }
+
+    .ma1-play-button:hover {
+      background: white;
+      transform: translate(-50%, -50%) scale(1.15);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .ma1-play-button svg {
+      width: 36px;
+      height: 36px;
+      margin-left: 4px;
+    }
+
+    /* MAIN CONTENT LAYOUT - Clear separation */
+    .ma1-course-main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 80px 20px;
+      display: grid;
+      grid-template-columns: 1fr 350px;
+      gap: 60px;
+      align-items: start;
+      background: #ffffff;
+      position: relative;
+    }
+
+    .ma1-course-main::before {
+      content: '';
+      position: absolute;
+      top: -40px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100px;
+      height: 6px;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      border-radius: 3px;
+    }
+
+    .ma1-course-content {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+      border: 1px solid #e5e7eb;
+    }
+
+    .ma1-course-overview {
+      color: #374151;
+      line-height: 1.7;
+      font-size: 16px;
+    }
+
+    .ma1-course-overview h2,
+    .ma1-course-overview h3,
+    .ma1-course-overview h4 {
+      color: #1f2937;
+      font-weight: 600;
+      margin: 32px 0 16px 0;
+    }
+
+    .ma1-course-overview h2 {
+      font-size: 24px;
+      border-bottom: 3px solid #007bff;
+      padding-bottom: 8px;
+    }
+
+    .ma1-course-overview h3 {
+      font-size: 20px;
+    }
+
+    .ma1-course-overview h4 {
+      font-size: 18px;
+    }
+
+    .ma1-course-overview p {
+      margin-bottom: 16px;
+    }
+
+    .ma1-course-overview ul,
+    .ma1-course-overview ol {
+      margin: 16px 0;
+      padding-left: 24px;
+    }
+
+    .ma1-course-overview li {
+      margin-bottom: 8px;
+    }
+
+    .ma1-course-overview blockquote {
+      background: #f8f9fa;
+      border-left: 4px solid #007bff;
+      padding: 16px 24px;
+      margin: 24px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    /* SIDEBAR STYLING */
+    .ma1-course-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .ma1-sidebar-card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+      border: 1px solid #e5e7eb;
+    }
+
+    .ma1-sidebar-card h3 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 20px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #f3f4f6;
+    }
+
+    .ma1-course-details-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .ma1-course-detail-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 16px 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .ma1-course-detail-item:last-child {
+      border-bottom: none;
+    }
+
+    .ma1-course-detail-icon {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      color: #007bff;
+      margin-top: 2px;
+    }
+
+    .ma1-course-detail-content {
+      flex: 1;
+    }
+
+    .ma1-course-detail-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .ma1-course-detail-text {
+      font-size: 15px;
+      font-weight: 500;
+      color: #1f2937;
+      line-height: 1.4;
+    }
+
+    /* SOCIAL SHARING */
+    .ma1-social-sharing {
+      text-align: center;
+    }
+
+    .ma1-sharing-message {
+      font-size: 14px;
+      color: #6b7280;
+      margin-bottom: 16px;
+    }
+
+    .ma1-ma1-social-links {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .ma1-social-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      background: #f3f4f6;
+      border-radius: 12px;
+      color: #6b7280;
+      text-decoration: none;
+      transition: all 0.3s ease;
+    }
+
+    .ma1-social-link:hover {
+      background: #007bff;
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+    }
+
+    .ma1-social-link svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* STUDIO VIEW */
+    .wrap-instructor-info.studio-view {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 24px;
+    }
+
+    .instructor-info-action {
+      color: #856404;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    .instructor-info-action:hover {
+      color: #533102;
+      text-decoration: underline;
+    }
+
+    /* ERROR MESSAGE */
+    #register_error {
+      background: #fee;
+      color: #c53030;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-top: 16px;
+      border: 1px solid #fed7d7;
+      font-size: 14px;
+      display: none;
+    }
+
+    /* RESPONSIVE DESIGN */
+    @media (max-width: 1200px) {
+      .ma1-course-hero-content {
+        grid-template-columns: 1fr 350px;
+        gap: 40px;
+      }
+
+      .ma1-course-main {
+        grid-template-columns: 1fr 300px;
+        gap: 40px;
+      }
+    }
+
+    @media (max-width: 992px) {
+      .ma1-course-hero {
+        padding: 60px 0 80px;
+      }
+
+      .ma1-course-hero-content {
+        grid-template-columns: 1fr;
+        gap: 40px;
+        text-align: center;
+      }
+
+      .ma1-course-main {
+        grid-template-columns: 1fr;
+        gap: 40px;
+        padding: 60px 20px;
+      }
+
+      .ma1-course-sidebar {
+        order: -1;
+      }
+
+      .ma1-course-title {
+        font-size: 2.8rem;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .ma1-course-hero {
+        padding: 50px 0 70px;
+      }
+
+      .ma1-course-hero-content,
+      .ma1-course-main {
+        padding: 0 15px;
+      }
+
+      .ma1-course-content,
+      .ma1-sidebar-card {
+        padding: 24px;
+      }
+
+      .ma1-course-title {
+        font-size: 2.4rem;
+      }
+
+      .ma1-course-description {
+        font-size: 1.2rem;
+      }
+
+      .ma1-course-image {
+        height: 220px;
+      }
+
+      .ma1-enrollment-section {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+      }
+
+      .ma1-enrollment-section .register,
+      .ma1-enrollment-section .ma1-view-course-button,
+      .ma1-enrollment-section a[class*="register"],
+      .ma1-enrollment-section a[class*="add-to-cart"] {
+        text-align: center;
+        justify-content: center;
+        font-size: 16px;
+        padding: 16px 32px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .ma1-course-hero {
+        padding: 40px 0 60px;
+      }
+
+      .ma1-course-main {
+        padding: 50px 15px;
+        gap: 30px;
+      }
+
+      .ma1-course-content,
+      .ma1-sidebar-card {
+        padding: 20px;
+      }
+
+      .ma1-course-title {
+        font-size: 2rem;
+      }
+
+      .ma1-course-description {
+        font-size: 1.1rem;
+      }
+
+      .ma1-course-image {
+        height: 180px;
+      }
+
+      .ma1-course-detail-item {
+        padding: 12px 0;
+      }
+
+      .ma1-social-link {
+        width: 40px;
+        height: 40px;
+      }
+
+      .ma1-enrollment-section .register,
+      .ma1-enrollment-section .ma1-view-course-button,
+      .ma1-enrollment-section a[class*="register"],
+      .ma1-enrollment-section a[class*="add-to-cart"] {
+        font-size: 15px;
+        padding: 14px 28px;
+        min-width: 180px;
+      }
+    }
+
+    /* HIDE ORIGINAL COURSE ABOUT STYLING */
+    .wrapper-course-about,
+    .course-info.about,
+    /* HIDE ORIGINAL COURSE ABOUT STYLING */
+    .wrapper-course-about,
+    .course-info.about,
+    .ma1-course-sidebar.about,
+    .course-info-wrapper.about {
+      display: none !important;
+    }
+  </style>
+</%block>
+
+<%block name="headextra">
+  ## OG (Open Graph) title and description added below to give social media info to display
+  ## (https://developers.facebook.com/docs/opengraph/howtos/maximizing-distribution-media-content#tags)
+  <meta property="og:title" content="${course.display_name_with_default}" />
+  <meta property="og:description" content="${get_course_about_section(request, course, 'short_description')}" />
+</%block>
+
+<%block name="js_extra">
+  <script type="text/javascript">
+  (function() {
+    $(".register").click(function(event) {
+      $("#class_enroll_form").submit();
+      event.preventDefault();
+    });
+
+    $('#class_enroll_form').on('ajax:complete', function(event, xhr) {
+      if (xhr.status == 200) {
+        if (xhr.responseText == "") {
+          location.href = "${reverse('dashboard') | n, js_escaped_string}";
+        }
+        else {
+          location.href = xhr.responseText;
+        }
+      } else if (xhr.status == 403) {
+        // redirect unauthenticated user to the login page
+        location.replace("${reverse('signin_user') | n, js_escaped_string}?next=" + encodeURIComponent("${request.path | n, js_escaped_string}"));
+      } else {
+        $('#register_error').text(
+            (xhr.responseText ? xhr.responseText : "${_('An error occurred. Please try again later.') | n, js_escaped_string}")
+        ).css("display", "block");
+      }
+    });
+
+  })(this)
+  </script>
+
+  <script src="${static.url('js/course_info.js')}"></script>
+</%block>
+
+<%block name="pagetitle">${course.display_name_with_default}</%block>
+
+<main id="main" class="ma1-course-about-page" aria-label="${_('Nội dung')}" tabindex="-1">
+  <!-- Modern Course Hero Section -->
+  <section class="ma1-course-hero">
+    <div class="ma1-course-hero-content">
+      <div class="ma1-course-info-main">
+        <span class="ma1-course-org">${course.display_org_with_default}</span>
+        <h1 class="ma1-course-title">${course.display_name_with_default}</h1>
+        
+        % if get_course_about_section(request, course, "short_description"):
+          <p class="ma1-course-description">${get_course_about_section(request, course, "short_description")}</p>
+        % endif
+        
+        <div class="ma1-enrollment-section">
+          %if user.is_authenticated and registered:
+            <span class="register disabled">${_("Đã đăng ký")}</span>
+            %if show_courseware_link:
+              <a href="${course_target}" class="ma1-view-course-button">
+                <strong>${_("Xem khóa học")}</strong>
+              </a>
+            %endif
+          % elif is_course_full:
+            <span class="register disabled">
+              ${_("Khóa học đã đầy")}
+            </span>
+          % elif invitation_only and not can_enroll:
+            <span class="register disabled">${_("Chỉ đăng ký theo lời mời")}</span>
+          % elif not is_shib_course and not can_enroll:
+            <span class="register disabled">
+              <i class="fa fa-lock" aria-hidden="true"></i> ${_("Đã đóng đăng ký")}
+            </span>
+          %elif allow_anonymous:
+            %if show_courseware_link:
+              <a href="${course_target}" class="ma1-view-course-button">
+                <strong>${_("Xem khóa học")}</strong>
+              </a>
+            %endif
+          %else:
+            <%
+              if ecommerce_checkout:
+                reg_href = ecommerce_checkout_link
+              else:
+                reg_href="#"
+              if single_paid_mode:
+                href_class = "add-to-cart"
+              else:
+                href_class = "register"
+            %>
+            <a href="${reg_href}" class="${href_class}">
+              ${_("Vào học")}
+            </a>
+            <div id="register_error"></div>
+          %endif
+        </div>
+      </div>
+      
+      <div class="ma1-course-media">
+        % if get_course_about_section(request, course, "video"):
+          <a href="#video-modal" class="media" rel="leanModal">
+            <img src="${course_image_urls['large']}" alt="" aria-hidden="true" class="ma1-course-image" />
+            <div class="ma1-play-button">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+            </div>
+          </a>
+        %else:
+          <img src="${course_image_urls['large']}" onerror="this.src='/theming/asset/images/no_course_image.png';" alt="" aria-hidden="true" class="ma1-course-image" />
+        % endif
+      </div>
+    </div>
+  </section>
+
+  <!-- Course Main Content -->
+  <div class="ma1-course-main">
+    <!-- Course Overview Content -->
+    <div class="ma1-course-content">
+      % if staff_access and studio_url is not None:
+        <div class="wrap-instructor-info studio-view">
+          <a class="instructor-info-action" href="${studio_url}">${_("Xem trang About trong studio")}</a>
+        </div>
+      % endif
+      
+      <div class="ma1-course-overview">
+        ${clean_dangerous_html(get_course_about_section(request, course, "overview"))}
+      </div>
+    </div>
+
+    <!-- Course Sidebar -->
+    <div class="ma1-course-sidebar">
+      <div class="ma1-sidebar-card">
+        <h3>${_("Thông tin khóa học")}</h3>
+        <ul class="ma1-course-details-list">
+          <li class="ma1-course-detail-item">
+            <svg class="ma1-course-detail-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path fill-rule="evenodd" clip-rule="evenodd" d="M12 3L1 9L5 11.18V17.18L12 21L19 17.18V11.18L21 10.09V17H23V9L12 3ZM18.8201 8.99997L12.0001 12.72L5.18007 8.99997L12.0001 5.27997L18.8201 8.99997ZM12 18.72L17 15.99V12.27L12 15L7 12.27V15.99L12 18.72Z" fill="currentColor"/>
+            </svg>
+            <div class="ma1-course-detail-content">
+              <div class="ma1-course-detail-title">${_("Mã khóa học")}</div>
+              <div class="ma1-course-detail-text">${course.display_number_with_default}</div>
+            </div>
+          </li>
+          
+          % if not course.start_date_is_still_default:
+            <%
+                course_start_date = course.advertised_start or course.start
+            %>
+            <li class="ma1-course-detail-item">
+              <svg class="ma1-course-detail-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M18 4H19C20.1 4 21 4.9 21 6V20C21 21.1 20.1 22 19 22H5C3.89 22 3 21.1 3 20L3.01 6C3.01 4.9 3.89 4 5 4H6V2H8V4H16V2H18V4ZM5 10V20H19V10H5ZM19 8H5V6H19V8ZM17 13H12V18H17V13Z" fill="currentColor"/>
+              </svg>
+              <div class="ma1-course-detail-content">
+                <div class="ma1-course-detail-title">${_("Ngày bắt đầu")}</div>
+                <div class="ma1-course-detail-text">
+                  % if isinstance(course_start_date, str):
+                      ${course_start_date}
+                  % else:
+                      <%
+                         course_date_string = course_start_date.strftime('%Y-%m-%dT%H:%M:%S%z')
+                      %>
+                      <span class="localized_datetime" data-format="shortDate" data-datetime="${course_date_string}" data-language="${LANGUAGE_CODE}"></span>
+                  % endif
+                </div>
+              </div>
+            </li>
+          % endif
+          
+          % if course.end:
+            <%
+                course_end_date = course.end
+            %>
+            <li class="ma1-course-detail-item">
+              <svg class="ma1-course-detail-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M18 4H19C20.1 4 21 4.9 21 6V20C21 21.1 20.1 22 19 22H5C3.89 22 3 21.1 3 20L3.01 6C3.01 4.9 3.89 4 5 4H6V2H8V4H16V2H18V4ZM5 10V20H19V10H5ZM19 8H5V6H19V8ZM17 13H12V18H17V13Z" fill="currentColor"/>
+              </svg>
+              <div class="ma1-course-detail-content">
+                <div class="ma1-course-detail-title">${_("Ngày kết thúc")}</div>
+                <div class="ma1-course-detail-text">
+                  % if isinstance(course_end_date, str):
+                      ${course_end_date}
+                  % else:
+                    <%
+                        course_date_string = course_end_date.strftime('%Y-%m-%dT%H:%M:%S%z')
+                    %>
+                    <span class="localized_datetime" data-format="shortDate" data-datetime="${course_date_string}" data-language="${LANGUAGE_CODE}"></span>
+                  % endif
+                </div>
+              </div>
+            </li>
+          % endif
+
+          % if get_course_about_section(request, course, "effort"):
+            <li class="ma1-course-detail-item">
+              <svg class="ma1-course-detail-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="currentColor"/>
+              </svg>
+              <div class="ma1-course-detail-content">
+                <div class="ma1-course-detail-title">${_("Thời gian học dự kiến")}</div>
+                <div class="ma1-course-detail-text">${get_course_about_section(request, course, "effort")}</div>
+              </div>
+            </li>
+          % endif
+
+          %if course_price and (is_cosmetic_price_enabled):
+            <li class="ma1-course-detail-item">
+              <svg class="ma1-course-detail-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z" fill="currentColor"/>
+              </svg>
+              <div class="ma1-course-detail-content">
+                <div class="ma1-course-detail-title">${_("Học phí")}</div>
+                <div class="ma1-course-detail-text">${course_price}</div>
+              </div>
+            </li>
+          %endif
+
+          % if get_course_about_section(request, course, "prerequisites"):
+            <li class="ma1-course-detail-item">
+              <svg class="ma1-course-detail-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" fill="currentColor"/>
+              </svg>
+              <div class="ma1-course-detail-content">
+                <div class="ma1-course-detail-title">${_("Yêu cầu")}</div>
+                <div class="ma1-course-detail-text">${get_course_about_section(request, course, "prerequisites")}</div>
+              </div>
+            </li>
+          % endif
+        </ul>
+      </div>
+
+      <!-- Social Sharing -->
+      % if static.get_value('course_about_show_social_links', True):
+      <div class="ma1-sidebar-card">
+        <h3>${_("Chia sẻ")}</h3>
+        <div class="ma1-social-sharing">
+          <div class="ma1-sharing-message">${_("Chia sẻ với bạn bè và gia đình!")}</div>
+          <%
+            import six
+            site_domain = static.get_value('site_domain', settings.SITE_NAME)
+            site_protocol = 'https' if settings.HTTPS == 'on' else 'http'
+            platform_name = static.get_platform_name()
+            course_path = reverse('about_course', args=[str(course.id)])
+            course_url = f"{site_protocol}://{site_domain}{course_path}"
+
+            tweet_text = _("Tôi vừa đăng ký {number} {title} qua {account} {url}").format(
+                number=course.number,
+                title=course.display_name_with_default,
+                account=static.get_value('course_about_twitter_account', settings.PLATFORM_TWITTER_ACCOUNT),
+                url=course_url
+            )
+
+            tweet_action = f"https://twitter.com/intent/tweet?text={six.moves.urllib.parse.quote(tweet_text)}"
+            facebook_link = f"https://www.facebook.com/sharer/sharer.php?u={six.moves.urllib.parse.quote(course_url)}"
+
+            email_body = _("Tôi vừa đăng ký {number} {title} qua {platform} {url}").format(
+                    number=course.number,
+                    title=course.display_name_with_default,
+                    platform=platform_name,
+                    url=course_url
+            )
+
+            email_subject = _("Học khóa học với {platform} online").format(platform=platform_name)
+            email_link = f"mailto:?subject={six.moves.urllib.parse.quote(email_subject.encode('UTF-8'))}&body={six.moves.urllib.parse.quote(email_body.encode('UTF-8'))}"
+          %>
+          <div class="ma1-ma1-social-links">
+            <a href="${tweet_action}" class="ma1-social-link" target="_blank">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18.8996 1H22.5816L14.5398 10.3183L24 23H16.5945L10.7901 15.3106L4.15646 23H0.469358L9.06911 13.0313L0 1H7.59323L12.8344 8.02837L18.8996 1ZM17.6063 20.7683H19.6454L6.48241 3.11538H4.29206L17.6063 20.7683Z" fill="currentColor"/>
+              </svg>
+            </a>
+            <a href="${facebook_link}" class="ma1-social-link" target="_blank">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M24 12.0737C24 5.40537 18.6276 2.9848e-07 12 0C5.3724 -2.98481e-07 -3.81165e-07 5.40537 0 12.0737C3.44449e-07 18.0996 4.3884 23.0945 10.1256 24V15.5641H7.0776V12.0737H10.1256V9.41383C10.1256 6.38817 11.916 4.71717 14.658 4.71717C15.9708 4.71717 17.3436 4.95261 17.3436 4.95261V7.92273H15.8316C14.34 7.92273 13.8756 8.8536 13.8756 9.80863V12.0737H17.2032L16.6716 15.5629H13.8756V24C19.6116 23.0945 24 18.0996 24 12.0737Z" fill="currentColor"/>
+              </svg>
+            </a>
+            <a href="${email_link}" class="ma1-social-link">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" fill="currentColor"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+      % endif
+    </div>
+  </div>
+</main>
+
+## Need to put this hidden form on the page so that the registration button works.
+## Since it's no harm to display a hidden form, we display it with the most permissive conditional
+## which is when the student is not registered.
+%if active_reg_button or is_shib_course:
+  <div style="display: none;">
+    <form id="class_enroll_form" method="post" data-remote="true" action="${reverse('change_enrollment')}">
+      <fieldset class="enroll_fieldset">
+        <legend class="sr">${pgettext("self","Enroll")}</legend>
+        <input name="course_id" type="hidden" value="${course.id}">
+        <input name="enrollment_action" type="hidden" value="enroll">
+      </fieldset>
+      <div class="submit">
+        <input name="submit" type="submit" value="${pgettext('self','enroll')}">
+      </div>
+    </form>
+  </div>
+%endif
+
+<%include file="../video_modal.html" />
+
+<%static:require_module_async module_name="js/dateutil_factory" class_name="DateUtilFactory">
+    DateUtilFactory.transform(iterationKey=".localized_datetime");
+</%static:require_module_async>
+
+<!-- Hide original course about page -->
+<style>
+  .course-info.about.container {
+    display: none !important;
+  }
+</style>

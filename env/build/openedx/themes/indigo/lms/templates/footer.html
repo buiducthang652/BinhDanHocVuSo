@@ -1,0 +1,401 @@
+<%page expression_filter="h"/>
+<%!
+  from datetime import datetime
+  from django.urls import reverse
+  from django.utils.translation import gettext as _
+  from lms.djangoapps.branding.api import get_footer
+  from openedx.core.djangoapps.lang_pref.api import footer_language_selector_is_enabled
+%>
+<% footer = get_footer(is_secure=is_secure) %>
+<% hide_openedx_link = footer.get('hide_openedx_link', False) %>
+<% icp_license_info = getattr(settings, 'ICP_LICENSE_INFO', {}) %>
+<%namespace name='static' file='static_content.html'/>
+
+<%def name="footer_content()">
+  <div class="f1-footer-grid">
+    <section class="f1-footer-col f1-footer-brand">
+      <div class="f1-brand-container">
+        <div class="f1-university-logo">
+          <img src="${static.url('indigo/images/logo_white.png')}" alt="Logo HNUE" class="f1-brand-logo" />
+          <h3 class="f1-university-title">Trường Đại học Sư phạm Hà Nội</h3>
+          <p class="f1-platform-subtitle">Nền tảng bình dân học vụ số</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="f1-footer-col">
+      <h3 class="f1-footer-title">Thông tin liên hệ</h3>
+      <div class="f1-contact-info">
+        <div class="f1-contact-item">
+          <span class="f1-contact-text">TRUNG TÂM ĐÀO TẠO - BỒI DƯỠNG THƯỜNG XUYÊN</span>
+        </div>
+        <div class="f1-contact-item">
+          <span class="f1-contact-icon">📍</span>
+          <span class="f1-contact-text">Địa chỉ: Tầng 6 - Tòa nhà Hành chính - Hiệu bộ - 136 Xuân Thủy - Phường Cầu Giấy, TP. Hà Nội</span>
+        </div>
+        <div class="f1-contact-item">
+          <span class="f1-contact-icon">📞</span>
+          <span class="f1-contact-text">Điện thoại: (024)3.754.7843 - 03579.03.033</span>
+        </div>
+        <div class="f1-contact-item">
+          <span class="f1-contact-icon">📧</span>
+          <span class="f1-contact-text">Email: ttdtbdtx@hnue.edu.vn</span>
+        </div>
+        <div class="f1-contact-item">
+          <span class="f1-contact-icon">🌐</span>
+          <span class="f1-contact-text">Website: <a href="http://dtbdtx.hnue.edu.vn/" target="_blank" style="color: #1f3780; text-decoration: none;">http://dtbdtx.hnue.edu.vn/</a></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="f1-footer-col">
+      <h3 class="f1-footer-title">Các đơn vị đồng hành</h3>
+      <div class="f1-partner-links">
+
+        <div class="f1-partner-item">
+          <img src="${static.url('indigo/images/logo_white.png')}" alt="SOICT" class="f1-partner-logo" />
+          <span class="f1-partner-text">Công đoàn<br>Trường Đại học Sư phạm Hà Nội</span>
+        </div>
+        
+        <div class="f1-partner-item">
+          <img src="${static.url('indigo/images/logo_white.png')}" alt="SOICT" class="f1-partner-logo" />
+          <span class="f1-partner-text">Trung tâm Công nghệ thông tin<br>Trường Đại học Sư phạm Hà Nội</span>
+        </div>
+        
+      </div>
+    </section>
+  </div>
+
+  <div class="f1-footer-bottom">
+    <p class="f1-copyright">
+      Hệ thống được xây dựng và vận hành bởi <a href="https://itc.hnue.edu.vn/" target="_blank" style="color: #ffd700; text-decoration: none; font-weight: bold;">Trung tâm Công nghệ thông tin - Trường Đại học Sư phạm Hà Nội</a>
+    </p>
+  </div>
+</%def>
+
+<div class="wrapper wrapper-footer">
+  <footer id="footer" class="tutor-container footer-v2">
+    ${footer_content()}
+  </footer>
+</div>
+
+<style>
+/* ===== NEW FOOTER DESIGN - GOVERNMENT STYLE ===== */
+
+/* Wrapper footer with background image and no padding */
+.wrapper-footer {
+  background-image: url("${static.url('indigo/images/bg_footer.jpg')}") !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  position: relative !important;
+}
+
+.wrapper-footer::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: rgba(245, 240, 225, 0.4) !important;
+  z-index: 1 !important;
+}
+
+/* Reset and base styles */
+html body .wrapper-footer footer.tutor-container,
+html body div.wrapper-footer footer#footer.tutor-container,
+html body .wrapper.wrapper-footer footer.tutor-container.footer-v2 {
+  margin: 0 auto !important;
+  padding: 0 !important;
+  max-width: none !important;
+  width: 100% !important;
+  text-align: left !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+/* Main footer container */
+.footer-v2 {
+  position: relative !important;
+  background: transparent !important;
+  color: #333333 !important;
+  padding: 40px 0 20px !important;
+  font-family: 'Arial', 'Helvetica', sans-serif !important;
+  font-size: 14px !important;
+  line-height: 1.6 !important;
+  min-height: auto !important;
+  box-shadow: none !important;
+  z-index: 2 !important;
+}
+
+/* Remove old overlays and effects */
+.footer-v2::before,
+.footer-v2::after {
+  display: none !important;
+}
+
+/* Footer content container */
+.footer-v2 .f1-footer-grid {
+  max-width: 1400px !important;
+  margin: 0 auto !important;
+  padding: 0 20px !important;
+  box-sizing: border-box !important;
+}
+
+/* Grid layout - 3 columns */
+.f1-footer-grid {
+  position: relative !important;
+  z-index: 1 !important;
+  display: grid !important;
+  grid-template-columns: 350px 1fr 1fr !important;
+  gap: 60px !important;
+  margin: 0 !important;
+  align-items: start !important;
+}
+
+/* Column styling */
+.footer-v2 .f1-footer-col {
+  padding: 20px 0 !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  backdrop-filter: none !important;
+  border: none !important;
+  transition: none !important;
+  box-shadow: none !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  line-height: 1.6 !important;
+}
+
+.footer-v2 .f1-footer-col:hover {
+  transform: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* University/Brand column styling */
+.f1-university-logo {
+  text-align: center !important;
+  padding: 30px 20px !important;
+  background: white !important;
+  border-radius: 12px !important;
+  margin-bottom: 20px !important;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+}
+
+.f1-brand-logo {
+  width: 100px !important;
+  height: auto !important;
+  margin-bottom: 20px !important;
+  display: block !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.f1-university-title {
+  font-size: 18px !important;
+  font-weight: bold !important;
+  line-height: 1.4 !important;
+  margin: 0 0 15px 0 !important;
+  text-align: center !important;
+  color: #1f3780 !important;
+  text-transform: none !important;
+  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif !important;
+}
+
+.f1-platform-subtitle {
+  font-size: 14px !important;
+  font-weight: normal !important;
+  line-height: 1.4 !important;
+  margin: 0 !important;
+  text-align: center !important;
+  color: #666666 !important;
+  font-style: italic !important;
+}
+
+/* Footer titles */
+.f1-footer-title {
+  color: #d32f2f !important;
+  font-family: 'Arial', 'Helvetica', sans-serif !important;
+  font-weight: bold !important;
+  margin-bottom: 20px !important;
+  text-transform: none !important;
+  font-size: 18px !important;
+  letter-spacing: normal !important;
+  text-shadow: none !important;
+  position: relative !important;
+  padding-bottom: 0 !important;
+}
+
+.f1-footer-title::after {
+  display: none !important;
+}
+
+/* Contact info styling */
+.f1-contact-info {
+  margin: 0 !important;
+}
+
+.f1-contact-item {
+  display: flex !important;
+  align-items: flex-start !important;
+  margin-bottom: 15px !important;
+  padding: 0 !important;
+}
+
+.f1-contact-icon {
+  font-size: 16px !important;
+  margin-right: 10px !important;
+  min-width: 25px !important;
+  color: #d32f2f !important;
+}
+
+.f1-contact-text {
+  color: #333333 !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+/* Partner links styling */
+.f1-partner-links {
+  margin: 0 !important;
+}
+
+.f1-partner-item {
+  display: flex !important;
+  align-items: center !important;
+  margin-bottom: 20px !important;
+  padding: 15px !important;
+  background: white !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+  border: 1px solid #e0e0e0 !important;
+}
+
+.f1-partner-logo {
+  width: 60px !important;
+  height: 60px !important;
+  margin-right: 15px !important;
+  object-fit: contain !important;
+  border-radius: 4px !important;
+  background: white !important;
+  padding: 5px !important;
+}
+
+.f1-partner-text {
+  color: #333333 !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+  font-weight: normal !important;
+}
+
+/* Footer bottom */
+.f1-footer-bottom {
+  margin-top: 40px !important;
+  margin-bottom: 0 !important;
+  padding: 20px 0 !important;
+  background: #1f3780 !important;
+  color: white !important;
+  text-align: center !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+.f1-footer-bottom::before {
+  display: none !important;
+}
+
+.f1-footer-bottom .f1-copyright {
+  font-size: 14px !important;
+  font-weight: normal !important;
+  text-align: center !important;
+  color: white !important;
+  text-shadow: none !important;
+  line-height: 1.5 !important;
+  letter-spacing: normal !important;
+  position: relative !important;
+  z-index: 1 !important;
+  margin: 0 !important;
+}
+
+/* Responsive design */
+@media (max-width: 992px) {
+  .f1-footer-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 40px !important;
+  }
+  
+  .footer-v2 > div,
+  .footer-v2 .f1-footer-grid {
+    padding: 0 20px !important;
+  }
+  
+  .f1-footer-bottom {
+    padding: 20px 0 !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .f1-footer-grid {
+    grid-template-columns: 1fr !important;
+    gap: 30px !important;
+  }
+  
+  .footer-v2 > div,
+  .footer-v2 .f1-footer-grid {
+    padding: 0 20px !important;
+  }
+  
+  .f1-footer-bottom {
+    padding: 20px 0 !important;
+  }
+  
+  .f1-university-logo {
+    padding: 20px 15px !important;
+  }
+  
+  .f1-brand-logo {
+    width: 70px !important;
+    margin-bottom: 15px !important;
+  }
+  
+  .f1-university-title {
+    font-size: 16px !important;
+    margin-bottom: 10px !important;
+  }
+  
+  .f1-platform-subtitle {
+    font-size: 13px !important;
+  }
+  
+  .f1-partner-item {
+    flex-direction: column !important;
+    text-align: center !important;
+  }
+  
+  .f1-partner-logo {
+    margin-right: 0 !important;
+    margin-bottom: 10px !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .footer-v2 {
+    padding: 30px 0 15px !important;
+  }
+  
+  .footer-v2 > div,
+  .footer-v2 .f1-footer-grid {
+    padding: 0 15px !important;
+  }
+  
+  .f1-footer-bottom {
+    padding: 15px 0 !important;
+  }
+}
+</style>

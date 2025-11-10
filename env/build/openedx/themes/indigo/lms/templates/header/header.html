@@ -1,0 +1,753 @@
+## mako
+<%page expression_filter="h" args="online_help_token, use_cookie_banner=False"/>
+
+<%namespace name='static' file='../static_content.html'/>
+<%namespace file='../main.html' import="login_query"/>
+<%!
+from django.urls import reverse
+from django.utils.translation import gettext as _
+import waffle
+
+from lms.djangoapps.ccx.overrides import get_current_ccx
+from openedx.core.djangolib.markup import HTML, Text
+
+# App that handles subdomain specific branding
+from lms.djangoapps.branding import api as branding_api
+from openedx.core.djangoapps.lang_pref.api import header_language_selector_is_enabled, released_languages
+from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
+
+%>
+
+## Provide a hook for themes to inject branding on top.
+<%block name="navigation_top" />
+
+<!-- Page Title Override for SEO -->
+<%def name="pagetitle()">HNUE - Đại học Sư phạm Hà Nội - Bình dân học vụ số</%def>
+
+<%
+  unsupported_browser_alert_versions = configuration_helpers.get_value('UNSUPPORTED_BROWSER_ALERT_VERSIONS', settings.FEATURES.get('UNSUPPORTED_BROWSER_ALERT_VERSIONS'))
+%>
+% if waffle.switch_is_active('enable_unsupported_browser_alert'):
+  <script>
+    var $buoop = {
+        notify:${unsupported_browser_alert_versions | n, decode.utf8},
+        api:5,
+        reminder:0
+    };
+    function $buo_f() {
+        var e = document.createElement("script");
+        e.src = "//browser-update.org/update.min.js";
+        document.body.appendChild(e);
+    };
+    try {document.addEventListener("DOMContentLoaded", $buo_f,false)}
+    catch(e){window.attachEvent("onload", $buo_f)}
+  </script>
+% endif
+
+<%block name="js_extra">
+</%block>
+
+<!-- SEO META TAGS FOR HNUE -->
+<%block name="header_meta">
+    <!-- Primary Meta Tags -->
+    <meta name="title" content="Đại học Sư phạm Hà Nội - HNUE - Bình dân học vụ số">
+    <meta name="description" content="Hệ thống học tập trực tuyến của Đại học Sư phạm Hà Nội (HNUE). Bình dân học vụ số, đào tạo giáo viên, khóa học trực tuyến chất lượng cao.">
+    <meta name="keywords" content="HNUE, Đại học Sư phạm Hà Nội, bình dân học vụ số, đào tạo giáo viên, khóa học trực tuyến, giáo dục, sư phạm, học tập số">
+    <meta name="author" content="Đại học Sư phạm Hà Nội">
+    <meta name="robots" content="index, follow">
+    <meta name="language" content="Vietnamese">
+    <meta name="revisit-after" content="7 days">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="${request.build_absolute_uri()}">
+    <meta property="og:title" content="Đại học Sư phạm Hà Nội - HNUE - Bình dân học vụ số">
+    <meta property="og:description" content="Hệ thống học tập trực tuyến của Đại học Sư phạm Hà Nội (HNUE). Bình dân học vụ số, đào tạo giáo viên, khóa học trực tuyến chất lượng cao.">
+    <meta property="og:image" content="${static.url('images/logo.png')}">
+    <meta property="og:site_name" content="HNUE - Đại học Sư phạm Hà Nội">
+    <meta property="og:locale" content="vi_VN">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="${request.build_absolute_uri()}">
+    <meta property="twitter:title" content="Đại học Sư phạm Hà Nội - HNUE - Bình dân học vụ số">
+    <meta property="twitter:description" content="Hệ thống học tập trực tuyến của Đại học Sư phạm Hà Nội (HNUE). Bình dân học vụ số, đào tạo giáo viên, khóa học trực tuyến chất lượng cao.">
+    <meta property="twitter:image" content="${static.url('images/logo.png')}">
+    
+    <!-- Schema.org structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "EducationalOrganization",
+      "name": "Đại học Sư phạm Hà Nội",
+      "alternateName": ["HNUE", "Hanoi National University of Education", "Bình dân học vụ số"],
+      "url": "${request.build_absolute_uri()}",
+      "logo": "${static.url('images/logo.png')}",
+      "description": "Đại học Sư phạm Hà Nội (HNUE) - Hệ thống học tập trực tuyến, đào tạo giáo viên, bình dân học vụ số",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "136 Xuân Thủy",
+        "addressLocality": "Cầu Giấy",
+        "addressRegion": "Hà Nội",
+        "addressCountry": "VN"
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "admissions",
+        "areaServed": "VN",
+        "availableLanguage": "Vietnamese"
+      }
+    }
+    </script>
+</%block>
+
+<!-- CLEAN MODERN HEADER -->
+<header class="h1-global-header">
+    <div class="h1-header-container">
+        <div class="h1-main-header">
+            <!-- Logo Section -->
+            <div class="h1-header-logo">
+                <a href="/">
+                    <img src="${static.url('images/logo.png')}" alt="HNUE - Đại học Sư phạm Hà Nội - Bình dân học vụ số" class="h1-logo" />
+                </a>
+            </div>
+
+            <!-- Navigation Links -->
+            <div class="h1-nav-links">
+                <!-- All items on the right -->
+                <div class="h1-secondary">
+                    <!-- Menu items -->
+                    <div class="h1-nav-item">
+                        <a href="/courses" title="Khóa học trực tuyến HNUE - Đại học Sư phạm Hà Nội">Khóa học</a>
+                    </div>
+                    <div class="h1-nav-item">
+                        <a href="/guide" title="Hướng dẫn sử dụng hệ thống HNUE - Đại học Sư phạm Hà Nội">Hướng dẫn</a>
+                    </div>
+                    
+                    <!-- Auth Buttons -->
+                    % if user.is_authenticated:
+                        <div class="h1-nav-item">
+                            <a href="/dashboard" class="h1-dashboard-link">Bảng điều khiển</a>
+                        </div>
+                        <div class="h1-nav-item">
+                            <a href="/logout" class="h1-btn h1-btn-outline">Đăng xuất</a>
+                        </div>
+                    % else:
+                        <div class="h1-nav-item">
+                            <a href="/login" class="h1-btn h1-btn-outline">Đăng nhập</a>
+                        </div>
+                    % endif
+                </div>
+            </div>
+
+            <!-- Mobile Menu Button -->
+            <div class="h1-hamburger-menu" onclick="toggleMobileMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+
+        <!-- Mobile Navigation -->
+        <div class="h1-mobile-nav" id="mobileNav">
+            <div class="h1-mobile-menu">
+                <div class="h1-mobile-item">
+                    <a href="/courses" title="Khóa học trực tuyến HNUE - Đại học Sư phạm Hà Nội">Khóa học</a>
+                </div>
+                <div class="h1-mobile-item">
+                    <a href="/guide" title="Hướng dẫn sử dụng hệ thống HNUE - Đại học Sư phạm Hà Nội">Hướng dẫn</a>
+                </div>
+                % if user.is_authenticated:
+                    <div class="h1-mobile-item">
+                        <a href="/dashboard">Bảng điều khiển</a>
+                    </div>
+                    <div class="h1-mobile-item">
+                        <a href="/logout" class="h1-mobile-btn h1-mobile-btn-outline">Đăng xuất</a>
+                    </div>
+                % else:
+                    <div class="h1-mobile-item">
+                        <a href="/login" class="h1-mobile-btn h1-mobile-btn-outline">Đăng nhập</a>
+                    </div>
+                % endif
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Hidden H1 for SEO -->
+<div style="position: absolute; left: -9999px; top: -9999px;">
+    <h1>HNUE - Đại học Sư phạm Hà Nội - Bình dân học vụ số</h1>
+    <h2>Hệ thống học tập trực tuyến chất lượng cao</h2>
+    <h3>Đào tạo giáo viên - Giáo dục sư phạm - Khóa học trực tuyến</h3>
+</div>
+
+<style>
+/* ===== HEADER CSS WITH h1- PREFIX ===== */
+/* HNUE - Đại học Sư phạm Hà Nội - Bình dân học vụ số */
+/* Hanoi National University of Education - Online Learning Platform */
+/* Hệ thống học tập trực tuyến - Đào tạo giáo viên - Giáo dục sư phạm */
+/* Ultra-high specificity to override all OpenEdX CSS conflicts */
+
+/* ===== GLOBAL HEADER CONTAINER ===== */
+html body header.h1-global-header,
+html body .wrapper-header header.h1-global-header,
+html body div.wrapper-header header.h1-global-header {
+  background: #ffffff !important;
+  border-bottom: 1px solid #e5e5e5 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1050 !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 92px !important;
+  font-family: 'Inter', 'Be Vietnam Pro', sans-serif !important;
+}
+
+/* Header Container */
+html body header.h1-global-header .h1-header-container,
+html body .wrapper-header .h1-header-container {
+  max-width: 1400px !important;
+  margin: 0 auto !important;
+  padding: 0 20px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Main Header Layout */
+html body header.h1-global-header .h1-main-header,
+html body .wrapper-header .h1-main-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  min-height: 92px !important;
+  position: relative !important;
+}
+
+/* ===== LOGO SECTION ===== */
+html body .h1-header-logo,
+html body .h1-global-header .h1-header-logo,
+html body .wrapper-header .h1-header-logo {
+  display: flex !important;
+  align-items: center !important;
+  flex-shrink: 0 !important;
+  z-index: 1051 !important;
+  height: 85px !important;
+}
+
+html body .h1-header-logo a,
+html body .h1-global-header .h1-header-logo a,
+html body .wrapper-header .h1-header-logo a {
+  display: flex !important;
+  align-items: center !important;
+  text-decoration: none !important;
+  transition: all 0.3s ease !important;
+}
+
+html body .h1-header-logo a:hover,
+html body .h1-global-header .h1-header-logo a:hover,
+html body .wrapper-header .h1-header-logo a:hover {
+  transform: scale(1.02) !important;
+  text-decoration: none !important;
+}
+
+html body .h1-header-logo .h1-logo,
+html body .h1-global-header .h1-header-logo .h1-logo,
+html body .wrapper-header .h1-header-logo .h1-logo {
+  height: 82px !important;
+  width: auto !important;
+  max-width: 330px !important;
+  object-fit: contain !important;
+  display: block !important;
+}
+
+/* Logo Text */
+html body .h1-logo-text,
+html body .h1-global-header .h1-logo-text,
+html body .wrapper-header .h1-logo-text {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+html body .h1-platform-name,
+html body .h1-global-header .h1-platform-name,
+html body .wrapper-header .h1-platform-name {
+  font-size: 24px !important;
+  font-weight: 700 !important;
+  color: #1e293b !important;
+  line-height: 1.2 !important;
+  margin: 0 !important;
+}
+
+html body .h1-platform-subtitle,
+html body .h1-global-header .h1-platform-subtitle,
+html body .wrapper-header .h1-platform-subtitle {
+  font-size: 12px !important;
+  color: #64748b !important;
+  font-weight: 400 !important;
+  margin: 0 !important;
+  line-height: 1.2 !important;
+}
+
+/* ===== NAVIGATION LINKS ===== */
+html body .h1-nav-links,
+html body .h1-global-header .h1-nav-links,
+html body .wrapper-header .h1-nav-links {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  width: 100% !important;
+  margin-left: 40px !important;
+}
+
+/* Secondary Navigation - now contains all menu items */
+html body .h1-nav-links .h1-secondary,
+html body .h1-global-header .h1-nav-links .h1-secondary,
+html body .wrapper-header .h1-nav-links .h1-secondary {
+  display: flex !important;
+  align-items: center !important;
+  gap: 15px !important;
+}
+
+/* Navigation Items */
+html body .h1-nav-links .h1-secondary .h1-nav-item,
+html body .h1-global-header .h1-nav-links .h1-secondary .h1-nav-item,
+html body .wrapper-header .h1-nav-links .h1-secondary .h1-nav-item {
+  display: inline-block !important;
+  margin: 0 !important;
+  position: relative !important;
+}
+
+/* Navigation Links */
+html body .h1-nav-links .h1-secondary .h1-nav-item a,
+html body .h1-global-header .h1-nav-links .h1-secondary .h1-nav-item a,
+html body .wrapper-header .h1-nav-links .h1-secondary .h1-nav-item a,
+html body .h1-nav-links a:not(.h1-btn),
+html body .h1-global-header .h1-nav-links a:not(.h1-btn),
+html body .wrapper-header .h1-nav-links a:not(.h1-btn) {
+  color: #1e293b !important;
+  text-decoration: none !important;
+  font-weight: 500 !important;
+  font-size: 15px !important;
+  padding: 25px 20px !important;
+  display: inline-block !important;
+  transition: all 0.3s ease !important;
+  border-bottom: 3px solid transparent !important;
+  font-family: 'Inter', sans-serif !important;
+  letter-spacing: 0.2px !important;
+  text-transform: none !important;
+}
+
+/* Navigation hover effect disabled
+html body .h1-nav-links .h1-main .h1-nav-item a:hover,
+html body .h1-global-header .h1-nav-links .h1-main .h1-nav-item a:hover,
+html body .wrapper-header .h1-nav-links .h1-main .h1-nav-item a:hover,
+html body .h1-nav-links a:not(.h1-btn):hover,
+html body .h1-global-header .h1-nav-links a:not(.h1-btn):hover,
+html body .wrapper-header .h1-nav-links a:not(.h1-btn):hover {
+  color: #3b82f6 !important;
+  border-bottom-color: #3b82f6 !important;
+  text-decoration: none !important;
+}
+*/
+
+/* ===== BUTTONS ===== */
+html body .h1-btn,
+html body .h1-global-header .h1-btn,
+html body .wrapper-header .h1-btn {
+  display: inline-block !important;
+  padding: 25px 20px !important;
+  border-radius: 8px !important;
+  text-decoration: none !important;
+  font-weight: 500 !important;
+  font-size: 15px !important;
+  transition: all 0.3s ease !important;
+  border: 2px solid transparent !important;
+  cursor: pointer !important;
+  font-family: 'Inter', sans-serif !important;
+  letter-spacing: 0.2px !important;
+  border-bottom: 3px solid transparent !important;
+}
+
+/* Primary Button */
+html body .h1-btn-primary,
+html body .h1-global-header .h1-btn-primary,
+html body .wrapper-header .h1-btn-primary {
+  background: #3b82f6 !important;
+  color: white !important;
+  border-color: #3b82f6 !important;
+}
+
+html body .h1-btn-primary:hover,
+html body .h1-global-header .h1-btn-primary:hover,
+html body .wrapper-header .h1-btn-primary:hover {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  color: white !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+  text-decoration: none !important;
+}
+
+/* Outline Button */
+html body .h1-btn-outline,
+html body .h1-global-header .h1-btn-outline,
+html body .wrapper-header .h1-btn-outline {
+  background: transparent !important;
+  color: #1e293b !important;
+  border-color: transparent !important;
+  border-radius: 0 !important;
+  border-bottom: 3px solid transparent !important;
+  box-shadow: none !important;
+}
+
+/* Button hover effect disabled
+html body .h1-btn-outline:hover,
+html body .h1-global-header .h1-btn-outline:hover,
+html body .wrapper-header .h1-btn-outline:hover {
+  background: transparent !important;
+  color: #3b82f6 !important;
+  text-decoration: none !important;
+  border-bottom-color: #3b82f6 !important;
+}
+*/
+
+/* Dashboard Link - same style as navigation */
+html body .h1-dashboard-link,
+html body .h1-global-header .h1-dashboard-link,
+html body .wrapper-header .h1-dashboard-link {
+  color: #1e293b !important;
+  text-decoration: none !important;
+  font-weight: 500 !important;
+  font-size: 15px !important;
+  padding: 25px 20px !important;
+  display: inline-block !important;
+  transition: all 0.3s ease !important;
+  border-bottom: 3px solid transparent !important;
+  font-family: 'Inter', sans-serif !important;
+  letter-spacing: 0.2px !important;
+}
+
+/* Dashboard link hover effect disabled
+html body .h1-dashboard-link:hover,
+html body .h1-global-header .h1-dashboard-link:hover,
+html body .wrapper-header .h1-dashboard-link:hover {
+  color: #3b82f6 !important;
+  text-decoration: none !important;
+  border-bottom: 3px solid #3b82f6 !important;
+}
+*/
+
+/* ===== HAMBURGER MENU ===== */
+html body .h1-hamburger-menu,
+html body .h1-global-header .h1-hamburger-menu,
+html body .wrapper-header .h1-hamburger-menu {
+  display: none !important;
+  flex-direction: column !important;
+  justify-content: space-around !important;
+  width: 32px !important;
+  height: 32px !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  padding: 4px !important;
+  z-index: 1052 !important;
+}
+
+html body .h1-hamburger-menu span,
+html body .h1-global-header .h1-hamburger-menu span,
+html body .wrapper-header .h1-hamburger-menu span {
+  width: 100% !important;
+  height: 3px !important;
+  background: #1e293b !important;
+  border-radius: 2px !important;
+  transition: all 0.3s ease !important;
+  transform-origin: center !important;
+}
+
+/* ===== MOBILE NAVIGATION ===== */
+html body .h1-mobile-nav,
+html body .h1-global-header .h1-mobile-nav,
+html body .wrapper-header .h1-mobile-nav {
+  display: none !important;
+  position: absolute !important;
+  top: 100% !important;
+  left: 0 !important;
+  right: 0 !important;
+  background: white !important;
+  border-top: 1px solid #e5e5e5 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  z-index: 1049 !important;
+}
+
+html body .h1-mobile-nav.h1-open,
+html body .h1-global-header .h1-mobile-nav.h1-open,
+html body .wrapper-header .h1-mobile-nav.h1-open {
+  display: block !important;
+}
+
+html body .h1-mobile-menu,
+html body .h1-global-header .h1-mobile-menu,
+html body .wrapper-header .h1-mobile-menu {
+  padding: 20px !important;
+}
+
+html body .h1-mobile-item,
+html body .h1-global-header .h1-mobile-item,
+html body .wrapper-header .h1-mobile-item {
+  margin-bottom: 15px !important;
+}
+
+html body .h1-mobile-item a,
+html body .h1-global-header .h1-mobile-item a,
+html body .wrapper-header .h1-mobile-item a {
+  display: block !important;
+  padding: 12px 0 !important;
+  color: #1e293b !important;
+  text-decoration: none !important;
+  font-weight: 500 !important;
+  font-size: 16px !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  transition: all 0.3s ease !important;
+}
+
+/* Mobile menu hover effect disabled
+html body .h1-mobile-item a:hover,
+html body .h1-global-header .h1-mobile-item a:hover,
+html body .wrapper-header .h1-mobile-item a:hover {
+  color: #3b82f6 !important;
+  text-decoration: none !important;
+}
+*/
+
+/* Mobile Buttons */
+html body .h1-mobile-btn,
+html body .h1-global-header .h1-mobile-btn,
+html body .wrapper-header .h1-mobile-btn {
+  display: block !important;
+  width: 100% !important;
+  text-align: center !important;
+  padding: 12px 20px !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  border: 2px solid transparent !important;
+  margin-top: 10px !important;
+}
+
+html body .h1-mobile-btn-primary,
+html body .h1-global-header .h1-mobile-btn-primary,
+html body .wrapper-header .h1-mobile-btn-primary {
+  background: #3b82f6 !important;
+  color: white !important;
+  border-color: #3b82f6 !important;
+}
+
+html body .h1-mobile-btn-outline,
+html body .h1-global-header .h1-mobile-btn-outline,
+html body .wrapper-header .h1-mobile-btn-outline {
+  background: transparent !important;
+  color: #1e293b !important;
+  border-color: transparent !important;
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  padding: 12px 0 !important;
+  text-align: left !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  border-radius: 0 !important;
+  margin-top: 0 !important;
+  width: 100% !important;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 1010px) {
+  /* Logo size khi màn hình nhỏ hơn 1010px */
+  html body .h1-header-logo .h1-logo, html body .h1-global-header .h1-header-logo .h1-logo {
+    max-width: 270px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  html body .h1-nav-links,
+  html body .h1-global-header .h1-nav-links,
+  html body .wrapper-header .h1-nav-links {
+    display: none !important;
+  }
+  
+  html body .h1-hamburger-menu,
+  html body .h1-global-header .h1-hamburger-menu,
+  html body .wrapper-header .h1-hamburger-menu {
+    display: flex !important;
+  }
+  
+  html body .h1-header-container,
+  html body .h1-global-header .h1-header-container,
+  html body .wrapper-header .h1-header-container {
+    padding: 0 15px !important;
+  }
+  
+  /* Logo size cho mobile */
+  html body .h1-logo,
+  html body .h1-global-header .h1-logo,
+  html body .wrapper-header .h1-logo {
+    height: 60px !important;
+    max-width: 280px !important;
+  }
+  
+  /* Header height adjustment */
+  html body header.h1-global-header,
+  html body .wrapper-header header.h1-global-header {
+    min-height: 75px !important;
+  }
+  
+  html body .h1-main-header,
+  html body .wrapper-header .h1-main-header {
+    min-height: 75px !important;
+  }
+  
+  html body .h1-header-logo,
+  html body .wrapper-header .h1-header-logo {
+    height: 70px !important;
+  }
+  
+  html body .h1-platform-name,
+  html body .h1-global-header .h1-platform-name,
+  html body .wrapper-header .h1-platform-name {
+    font-size: 20px !important;
+  }
+  
+  html body .h1-platform-subtitle,
+  html body .h1-global-header .h1-platform-subtitle,
+  html body .wrapper-header .h1-platform-subtitle {
+    font-size: 10px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Logo size cho small mobile */
+  html body .h1-logo,
+  html body .h1-global-header .h1-logo,
+  html body .wrapper-header .h1-logo {
+    height: 50px !important;
+    max-width: 220px !important;
+  }
+  
+  /* Header height adjustment */
+  html body header.h1-global-header,
+  html body .wrapper-header header.h1-global-header {
+    min-height: 65px !important;
+  }
+  
+  html body .h1-main-header,
+  html body .wrapper-header .h1-main-header {
+    min-height: 65px !important;
+  }
+  
+  html body .h1-header-logo,
+  html body .wrapper-header .h1-header-logo {
+    height: 60px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  html body .h1-platform-name,
+  html body .h1-global-header .h1-platform-name,
+  html body .wrapper-header .h1-platform-name {
+    font-size: 18px !important;
+  }
+  
+  /* Logo size cho very small mobile */
+  html body .h1-logo,
+  html body .h1-global-header .h1-logo,
+  html body .wrapper-header .h1-logo {
+    height: 45px !important;
+    max-width: 180px !important;
+  }
+  
+  /* Header height adjustment */
+  html body header.h1-global-header,
+  html body .wrapper-header header.h1-global-header {
+    min-height: 60px !important;
+  }
+  
+  html body .h1-main-header,
+  html body .wrapper-header .h1-main-header {
+    min-height: 60px !important;
+  }
+  
+  html body .h1-header-logo,
+  html body .wrapper-header .h1-header-logo {
+    height: 55px !important;
+  }
+  
+  html body .h1-header-container,
+  html body .h1-global-header .h1-header-container,
+  html body .wrapper-header .h1-header-container {
+    padding: 0 10px !important;
+  }
+}
+
+@media (max-width: 360px) {
+  /* Logo size cho extra small mobile */
+  html body .h1-logo,
+  html body .h1-global-header .h1-logo,
+  html body .wrapper-header .h1-logo {
+    height: 40px !important;
+    max-width: 150px !important;
+  }
+  
+  /* Header height adjustment */
+  html body header.h1-global-header,
+  html body .wrapper-header header.h1-global-header {
+    min-height: 55px !important;
+  }
+  
+  html body .h1-main-header,
+  html body .wrapper-header .h1-main-header {
+    min-height: 55px !important;
+  }
+  
+  html body .h1-header-logo,
+  html body .wrapper-header .h1-header-logo {
+    height: 50px !important;
+  }
+}
+</style>
+
+<script>
+// ===== HEADER JAVASCRIPT =====
+function toggleMobileMenu() {
+  const mobileNav = document.getElementById('mobileNav');
+  const hamburger = document.querySelector('.h1-hamburger-menu');
+  
+  if (mobileNav && mobileNav.classList.contains('h1-open')) {
+    mobileNav.classList.remove('h1-open');
+    if (hamburger) hamburger.classList.remove('h1-active');
+  } else {
+    if (mobileNav) mobileNav.classList.add('h1-open');
+    if (hamburger) hamburger.classList.add('h1-active');
+  }
+}
+
+// Close mobile menu when clicking outside
+document.addEventListener('click', function(e) {
+  const mobileNav = document.getElementById('mobileNav');
+  const hamburger = document.querySelector('.h1-hamburger-menu');
+  
+  if (mobileNav && hamburger && !mobileNav.contains(e.target) && !hamburger.contains(e.target)) {
+    mobileNav.classList.remove('h1-open');
+    hamburger.classList.remove('h1-active');
+  }
+});
+
+// Close mobile menu on window resize
+window.addEventListener('resize', function() {
+  if (window.innerWidth > 768) {
+    const mobileNav = document.getElementById('mobileNav');
+    const hamburger = document.querySelector('.h1-hamburger-menu');
+    if (mobileNav) mobileNav.classList.remove('h1-open');
+    if (hamburger) hamburger.classList.remove('h1-active');
+  }
+});
+</script>

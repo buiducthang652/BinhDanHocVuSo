@@ -1,0 +1,48 @@
+name: autoactivate
+version: 0.2.0
+
+templates:
+  build/openedx/plugins/autoactivate/autoactivate/__init__.py: |
+    # empty
+  build/openedx/plugins/autoactivate/autoactivate/apps.py: |
+    from django.apps import AppConfig
+    from django.db import transaction
+    from django.db.models.signals import post_save
+    from django.contrib.auth import get_user_model
+
+    class AutoActivateConfig(AppConfig):
+        name = "autoactivate"
+        verbose_name = "Auto-activate new users"
+
+        def ready(self):
+            User = get_user_model()
+
+            def _ensure_active(sender, instance, created, **kwargs):
+                # Chỉ xử lý khi tài khoản vừa được tạo
+                if not created:
+                    return
+                # Bật is_active sau khi transaction của request commit xong
+                def _set_active(uid):
+                    User.objects.filter(id=uid, is_active=False).update(is_active=True)
+                transaction.on_commit(lambda: _set_active(instance.id))
+
+            post_save.connect(
+                _ensure_active,
+                sender=User,
+                dispatch_uid="autoactivate_on_user_create",
+            )
+
+patches:
+  openedx-dockerfile: |
+    # Đưa mã plugin vào image build
+    COPY ./plugins/autoactivate/autoactivate /openedx/edx-platform/autoactivate
+
+  openedx-lms-settings: |
+    # Bật app và cho phép đăng ký công khai
+    INSTALLED_APPS += ["autoactivate.apps.AutoActivateConfig"]
+    FEATURES["ALLOW_PUBLIC_ACCOUNT_CREATION"] = True
+    # Không yêu cầu xác nhận email ở phía server (đề phòng nơi khác đọc flag)
+    FEATURES["ENABLE_REQUIRE_EMAIL_CONFIRMATION"] = False
+
+  openedx-cms-settings: |
+    INSTALLED_APPS += ["autoactivate.apps.AutoActivateConfig"]

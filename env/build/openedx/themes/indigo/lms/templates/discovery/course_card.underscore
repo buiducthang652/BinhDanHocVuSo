@@ -1,0 +1,59 @@
+<a href="/courses/<%- course %>/about" 
+   class="course-card-link" 
+   aria-label="<%- gettext('Xem chi tiết về') %> <%- content.display_name %>">
+  <article class="course course-card" role="region" aria-label="<%- content.display_name %>">
+    <header class="course-image course-card__media">
+      <img
+        src="<%- image_url %>"
+        onerror="this.src='/theming/asset/images/no_course_image.png';"
+        alt="<%- content.display_name %> <%- content.number %>"
+        class="course-card__img"/>
+      <span class="course-card__badge" aria-hidden="true"><%- org %></span>
+      <span class="course-card__overlay" aria-hidden="true"></span>
+    </header>
+
+    <section class="course-info course-card__body" aria-hidden="true" style="justify-content: flex-start !important; gap: 12px !important;">
+      <div class="course-content">
+        <div class="course-code course-card__code"><%- content.number %></div>
+        <h2 class="course-title course-card__title">
+          <%- content.display_name %>
+        </h2>
+        <div class="course-organization"><%- org %></div>
+        
+        <!-- Course description/summary -->
+        <% if (typeof content.short_description !== 'undefined' && content.short_description) { %>
+          <div class="course-description" style="padding: 10px 15px 2px 15px; font-size: 12px; color: #64748b; line-height: 1.4; max-height: 32px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;"><%- content.short_description %></div>
+        <% } else if (typeof content.subtitle !== 'undefined' && content.subtitle) { %>
+          <div class="course-description" style="padding: 10px 15px 2px 15px; font-size: 12px; color: #64748b; line-height: 1.4; max-height: 32px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;"><%- content.subtitle %></div>
+        <% } else { %>
+          <div class="course-description" style="padding: 10px 15px 2px 15px; font-size: 12px; color: #64748b; line-height: 1.4; max-height: 32px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;"><%- gettext("Khám phá kiến thức mới với khóa học chất lượng cao") %></div>
+        <% } %>
+      </div>
+
+      <div class="course-date course-card__meta" style="margin-top: auto !important;">
+        <svg class="course-card__icon" width="16" height="16" viewBox="0 0 20 21" fill="none" aria-hidden="true">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M15 3.83332H15.8333C16.75 3.83332 17.5 4.58332 17.5 5.49999V17.1667C17.5 18.0833 16.75 18.8333 15.8333 18.8333H4.16667C3.24167 18.8333 2.5 18.0833 2.5 17.1667L2.50833 5.49999C2.50833 4.58332 3.24167 3.83332 4.16667 3.83332H5V2.16666H6.66667V3.83332H13.3333V2.16666H15V3.83332ZM4.16667 8.83332V17.1667H15.8333V8.83332H4.16667ZM15.8333 7.16666H4.16667V5.49999H15.8333V7.16666ZM14.1667 11.3333H10V15.5H14.1667V11.3333Z" fill="currentColor"/>
+        </svg>
+        <% if (typeof advertised_start !== 'undefined' && advertised_start) { %>
+          <span class="course-card__date"><%- interpolate(gettext("Bắt đầu: %(start_date)s"), { start_date: advertised_start }, true) %></span>
+        <% } else if (start) { %>
+          <span class="course-card__date"><%- interpolate(gettext("Bắt đầu: %(start_date)s"), { start_date: start }, true) %></span>
+        <% } else { %>
+          <span class="course-card__date"><%- gettext("Tự học theo lịch của bạn") %></span>
+        <% } %>
+      </div>
+    </section>
+
+    <div class="sr">
+      <ul>
+        <li><%- org %></li>
+        <li><%- content.number %></li>
+        <% if (typeof advertised_start !== 'undefined' && advertised_start) { %>
+          <li><%- gettext("Bắt đầu") %>: <time itemprop="startDate"><%- advertised_start %></time></li>
+        <% } else if (start) { %>
+          <li><%- gettext("Bắt đầu") %>: <time itemprop="startDate" datetime="<%- start %>"><%- start %></time></li>
+        <% } %>
+      </ul>
+    </div>
+  </article>
+</a>
