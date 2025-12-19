@@ -1,0 +1,9 @@
+name: email-verification
+version: 0.1.0
+patches:
+  openedx-lms-common-settings: |
+    # Enable email verification for new registrations
+    FEATURES['REQUIRE_EMAIL_CONFIRMATION'] = True
+    
+    # Set email verification to mandatory
+    ACCOUNT_EMAIL_VERIFICATION = 'mandatory'

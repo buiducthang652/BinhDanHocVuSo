@@ -1,0 +1,491 @@
+<%page expression_filter="h"/>
+<%namespace name='static' file='static_content.html'/>
+<%!
+from django.utils.translation import gettext as _
+from django.urls import reverse
+from openedx.core.djangolib.js_utils import js_escaped_string, dump_js_escaped_json
+%>
+<%inherit file="main.html" />
+
+<%def name="online_help_token()"><% return "courseware" %></%def>
+
+<%block name="head_extra">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap&subset=vietnamese" rel="stylesheet"/>
+  
+  <style>
+    /* Modern Course Index Learning Page Styles */
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+      background: linear-gradient(135deg, #6A79E4 0%, #849BF1 25%, #B5C7FA 50%, #96D5F6 75%, #BBE7F8 100%) !important;
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Header Synchronization */
+    html body .global-header .btn-holder .btn,
+    html body .global-header .nav-links .btn {
+      all: unset !important;
+      display: inline-block !important;
+      background: #6A79E4 !important;
+      color: white !important;
+      border: none !important;
+      padding: 8px 20px !important;
+      border-radius: 8px !important;
+      font-weight: 600 !important;
+      text-decoration: none !important;
+      transition: all 0.3s ease !important;
+      margin-left: 8px !important;
+      font-family: "Inter", sans-serif !important;
+      font-size: 14px !important;
+      cursor: pointer !important;
+    }
+
+    html body .global-header .btn-holder .btn:hover,
+    html body .global-header .nav-links .btn:hover {
+      background: #849BF1 !important;
+      color: white !important;
+      transform: translateY(-1px) !important;
+      box-shadow: 0 4px 12px rgba(106, 121, 228, 0.3) !important;
+    }
+
+    /* Navigation Links */
+    html body .global-header .nav-links .main .nav-tab a,
+    html body .global-header .nav-links .nav-item a:not(.btn) {
+      color: #1e293b !important;
+      font-weight: 500 !important;
+      text-decoration: none !important;
+    }
+
+    /* Main Learning Container */
+    .course-index-main {
+      max-width: 1400px;
+      margin: 40px auto;
+      padding: 0 24px;
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 32px;
+    }
+
+    /* Course Sidebar */
+    .course-sidebar {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 32px;
+      height: fit-content;
+      box-shadow: 
+        0 20px 40px -12px rgba(0, 0, 0, 0.2),
+        0 0 0 1px rgba(255, 255, 255, 0.5);
+    }
+
+    .course-sidebar h3 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 20px;
+    }
+
+    .course-outline {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .course-outline-item {
+      margin-bottom: 12px;
+    }
+
+    .course-outline-link {
+      display: block;
+      padding: 12px 16px;
+      background: rgba(106, 121, 228, 0.05);
+      border-radius: 12px;
+      color: #374151;
+      text-decoration: none;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+
+    .course-outline-link:hover {
+      background: rgba(106, 121, 228, 0.1);
+      color: #6A79E4;
+      transform: translateX(4px);
+    }
+
+    .course-outline-link.active {
+      background: #6A79E4;
+      color: white;
+    }
+
+    /* Main Content Area */
+    .course-main-content {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.25),
+        0 0 0 1px rgba(255, 255, 255, 0.5);
+    }
+
+    /* Course Header */
+    .course-header {
+      padding: 32px;
+      background: linear-gradient(135deg, #6A79E4, #849BF1);
+      color: white;
+    }
+
+    .course-header h1 {
+      font-size: 28px;
+      font-weight: 800;
+      margin: 0 0 8px;
+    }
+
+    .course-meta {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-top: 16px;
+      opacity: 0.9;
+    }
+
+    .course-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    /* Course Navigation Tabs */
+    .course-nav-tabs {
+      display: flex;
+      background: rgba(255, 255, 255, 0.9);
+      border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+    }
+
+    .course-nav-tab {
+      padding: 20px 32px;
+      color: #64748b;
+      text-decoration: none;
+      font-weight: 600;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s ease;
+      flex: 1;
+      text-align: center;
+    }
+
+    .course-nav-tab:hover {
+      color: #6A79E4;
+      background: rgba(106, 121, 228, 0.05);
+    }
+
+    .course-nav-tab.active {
+      color: #6A79E4;
+      border-bottom-color: #6A79E4;
+      background: rgba(106, 121, 228, 0.08);
+    }
+
+    /* Content Body */
+    .content-body {
+      padding: 40px;
+    }
+
+    .content-body h2 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 20px;
+    }
+
+    .content-body p {
+      font-size: 16px;
+      line-height: 1.6;
+      color: #374151;
+      margin-bottom: 20px;
+    }
+
+    /* Learning Sequence */
+    .learning-sequence {
+      display: grid;
+      gap: 20px;
+      margin-top: 32px;
+    }
+
+    .sequence-unit {
+      background: rgba(248, 250, 252, 0.8);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+      border-radius: 16px;
+      padding: 24px;
+      transition: all 0.3s ease;
+    }
+
+    .sequence-unit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    .unit-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .unit-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .unit-status {
+      padding: 4px 12px;
+      background: #10b981;
+      color: white;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .unit-status.pending {
+      background: #f59e0b;
+    }
+
+    .unit-status.locked {
+      background: #6b7280;
+    }
+
+    .unit-description {
+      color: #64748b;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    .unit-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .unit-btn {
+      padding: 10px 20px;
+      background: #6A79E4;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .unit-btn:hover {
+      background: #849BF1;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(106, 121, 228, 0.3);
+    }
+
+    .unit-btn.secondary {
+      background: rgba(106, 121, 228, 0.1);
+      color: #6A79E4;
+    }
+
+    .unit-btn.secondary:hover {
+      background: rgba(106, 121, 228, 0.2);
+    }
+
+    /* Responsive Design */
+    @media (max-width: 992px) {
+      .course-index-main {
+        grid-template-columns: 1fr;
+        gap: 24px;
+        margin: 20px 16px;
+      }
+
+      .course-sidebar {
+        order: 2;
+      }
+
+      .course-nav-tabs {
+        flex-direction: column;
+      }
+
+      .course-nav-tab {
+        text-align: left;
+      }
+
+      .content-body {
+        padding: 24px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .course-header {
+        padding: 24px;
+      }
+
+      .course-header h1 {
+        font-size: 24px;
+      }
+
+      .course-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .content-body {
+        padding: 20px;
+      }
+    }
+
+    /* Hide original courseware content */
+    .courseware-content,
+    .course-wrapper,
+    .courseware-wrapper,
+    .window-wrap {
+      display: none !important;
+    }
+  </style>
+</%block>
+
+<%block name="pagetitle">${course.display_name_with_default if course else _("Khóa học")}</%block>
+
+<main id="main" aria-label="${_('Nội dung khóa học')}" tabindex="-1">
+  <div class="course-index-main">
+    <!-- Course Sidebar -->
+    <aside class="course-sidebar">
+      <h3>${_("Nội dung khóa học")}</h3>
+      <nav class="course-outline" role="navigation" aria-label="${_('Điều hướng bài học')}">
+        <ul class="course-outline">
+          <li class="course-outline-item">
+            <a href="#" class="course-outline-link active">${_("Giới thiệu")}</a>
+          </li>
+          <li class="course-outline-item">
+            <a href="#" class="course-outline-link">${_("Chương 1: Cơ bản")}</a>
+          </li>
+          <li class="course-outline-item">
+            <a href="#" class="course-outline-link">${_("Chương 2: Nâng cao")}</a>
+          </li>
+          <li class="course-outline-item">
+            <a href="#" class="course-outline-link">${_("Bài tập")}</a>
+          </li>
+          <li class="course-outline-item">
+            <a href="#" class="course-outline-link">${_("Kiểm tra")}</a>
+          </li>
+        </ul>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="course-main-content">
+      <!-- Course Header -->
+      <header class="course-header">
+        % if course:
+          <h1>${course.display_name_with_default}</h1>
+          <div class="course-meta">
+            <div class="course-meta-item">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+              </svg>
+              <span>${_("Tiến độ")}: 25%</span>
+            </div>
+            <div class="course-meta-item">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/>
+              </svg>
+              <span>${_("Kết thúc")}: 31/12/2024</span>
+            </div>
+            <div class="course-meta-item">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
+              </svg>
+              <span>${_("Học viên")}: 1,247</span>
+            </div>
+          </div>
+        % else:
+          <h1>${_("Khóa học")}</h1>
+        % endif
+      </header>
+
+      <!-- Course Navigation -->
+      <nav class="course-nav-tabs" role="navigation" aria-label="${_('Điều hướng khóa học')}">
+        <a href="#" class="course-nav-tab active">${_("Trang chủ")}</a>
+        <a href="#" class="course-nav-tab">${_("Tiến độ")}</a>
+        <a href="#" class="course-nav-tab">${_("Thảo luận")}</a>
+        <a href="#" class="course-nav-tab">${_("Wiki")}</a>
+      </nav>
+
+      <!-- Content Body -->
+      <div class="content-body">
+        <h2>${_("Chào mừng đến với khóa học!")}</h2>
+        
+        <p>${_("Bạn đang ở trang chủ của khóa học. Đây là nơi bạn có thể xem tổng quan về khóa học, theo dõi tiến độ học tập và truy cập các tài liệu quan trọng.")}</p>
+
+        <p>${_("Sử dụng thanh điều hướng bên trái để di chuyển giữa các chương và bài học. Mỗi bài học sẽ có video, tài liệu đọc và bài tập để giúp bạn nắm vững kiến thức.")}</p>
+
+        <!-- Learning Sequence -->
+        <div class="learning-sequence">
+          <div class="sequence-unit">
+            <div class="unit-header">
+              <h3 class="unit-title">${_("Giới thiệu về khóa học")}</h3>
+              <span class="unit-status">${_("Hoàn thành")}</span>
+            </div>
+            <p class="unit-description">${_("Tìm hiểu về mục tiêu, cấu trúc và phương pháp học tập hiệu quả trong khóa học này.")}</p>
+            <div class="unit-actions">
+              <a href="#" class="unit-btn">${_("Xem lại")}</a>
+              <a href="#" class="unit-btn secondary">${_("Tài liệu")}</a>
+            </div>
+          </div>
+
+          <div class="sequence-unit">
+            <div class="unit-header">
+              <h3 class="unit-title">${_("Chương 1: Kiến thức nền tảng")}</h3>
+              <span class="unit-status pending">${_("Đang học")}</span>
+            </div>
+            <p class="unit-description">${_("Học các khái niệm cơ bản và xây dựng nền tảng vững chắc cho khóa học.")}</p>
+            <div class="unit-actions">
+              <a href="#" class="unit-btn">${_("Tiếp tục")}</a>
+              <a href="#" class="unit-btn secondary">${_("Ghi chú")}</a>
+            </div>
+          </div>
+
+          <div class="sequence-unit">
+            <div class="unit-header">
+              <h3 class="unit-title">${_("Chương 2: Ứng dụng thực tế")}</h3>
+              <span class="unit-status locked">${_("Chưa mở")}</span>
+            </div>
+            <p class="unit-description">${_("Áp dụng kiến thức đã học vào các tình huống thực tế và dự án cụ thể.")}</p>
+            <div class="unit-actions">
+              <a href="#" class="unit-btn secondary">${_("Xem trước")}</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</main>
+
+<!-- Override existing courseware content -->
+<style>
+  /* Hide original courseware elements */
+  .window-wrap,
+  .courseware-content,
+  .course-wrapper,
+  .courseware-wrapper,
+  .course-content-wrapper {
+    display: none !important;
+  }
+</style>
+
+<%static:require_module_async module_name="js/courseware" class_name="CoursewareMain">
+    // Custom courseware JavaScript if needed
+</%static:require_module_async>

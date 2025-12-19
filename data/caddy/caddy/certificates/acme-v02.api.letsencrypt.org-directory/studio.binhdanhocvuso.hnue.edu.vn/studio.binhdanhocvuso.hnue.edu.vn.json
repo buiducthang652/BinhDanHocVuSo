@@ -3,7 +3,7 @@
 		"studio.binhdanhocvuso.hnue.edu.vn"
 	],
 	"issuer_data": {
-		"url": "https://acme-v02.api.letsencrypt.org/acme/cert/0627f39e54a8fa0277cc204d58da0499bcaf",
+		"url": "https://acme-v02.api.letsencrypt.org/acme/cert/05513559632d993a283602cfc639a3679f66",
 		"ca": "https://acme-v02.api.letsencrypt.org/directory"
 	}
 }

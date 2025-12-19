@@ -1,0 +1,458 @@
+<%page expression_filter="h"/>
+<%!
+  from django.utils.translation import gettext as _
+  from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+  from organizations.models import Organization, OrganizationCourse
+%>
+<%inherit file="../main.html" />
+<%namespace name='static' file='../static_content.html'/>
+
+<%block name="pagetitle">${_("Khóa học - Bình Dân Học Vụ Số")}</%block>
+
+<%block name="head_extra">
+<style>
+  /* Reset và Base Styles */
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #f5f7fa;
+    color: #2c3e50;
+  }
+
+  .content-wrapper {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Hero Section */
+  .courses-hero {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 60px 20px 80px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .courses-hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M 100 0 L 0 0 0 100" fill="none" stroke="white" stroke-width="1" opacity="0.1"/></pattern></defs><rect fill="url(%23grid)" width="100%" height="100%"/></svg>');
+    opacity: 0.5;
+  }
+
+  .courses-hero h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 15px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .courses-hero p {
+    font-size: 1.2rem;
+    opacity: 0.95;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Main Container */
+  .courses-container {
+    max-width: 1400px;
+    margin: -60px auto 60px;
+    padding: 0 20px;
+    position: relative;
+    z-index: 10;
+  }
+
+  /* Category Section */
+  .category-section {
+    margin-bottom: 50px;
+  }
+
+  .category-header {
+    background: white;
+    border-radius: 12px;
+    padding: 25px 30px;
+    margin-bottom: 25px;
+    box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+
+  .category-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+
+  .category-icon.chung {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+
+  .category-icon.hocsinh {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  }
+
+  .category-icon.giaovien {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  }
+
+  .category-info h2 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 5px;
+  }
+
+  .category-info p {
+    color: #7f8c8d;
+    font-size: 0.95rem;
+  }
+
+  .category-count {
+    margin-left: auto;
+    background: #ecf0f1;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-weight: 600;
+    color: #2c3e50;
+    white-space: nowrap;
+  }
+
+  /* Course Grid */
+  .courses-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 25px;
+  }
+
+  /* Course Card */
+  .course-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .course-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+  }
+
+  .course-image {
+    height: 180px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .course-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .course-image.chung {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+
+  .course-image.hocsinh {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  }
+
+  .course-image.giaovien {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  }
+
+  .course-badge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: rgba(255,255,255,0.95);
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #667eea;
+  }
+
+  .course-content {
+    padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .course-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 10px;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .course-org {
+    font-size: 0.85rem;
+    color: #95a5a6;
+    margin-bottom: 15px;
+  }
+
+  .course-footer {
+    margin-top: auto;
+    padding-top: 15px;
+    border-top: 1px solid #ecf0f1;
+  }
+
+  .course-btn {
+    display: inline-block;
+    width: 100%;
+    padding: 12px 20px;
+    background: #667eea;
+    color: white;
+    text-align: center;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+
+  .course-btn:hover {
+    background: #5568d3;
+    transform: translateY(-2px);
+    color: white;
+    text-decoration: none;
+  }
+
+  /* Empty State */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #95a5a6;
+  }
+
+  .empty-state-icon {
+    font-size: 4rem;
+    margin-bottom: 15px;
+    opacity: 0.5;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .courses-hero h1 {
+      font-size: 2rem;
+    }
+
+    .courses-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .category-header {
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .category-count {
+      margin-left: 0;
+    }
+  }
+</style>
+</%block>
+
+<%
+  # Get organizations and their courses
+  try:
+    org_chung = Organization.objects.get(short_name='CHUNG')
+    org_hocsinh = Organization.objects.get(short_name='HOCSINH')
+    org_giaovien = Organization.objects.get(short_name='GIAOVIEN')
+    
+    # Get courses for each organization
+    courses_chung = []
+    courses_hocsinh = []
+    courses_giaovien = []
+    
+    for org_course in OrganizationCourse.objects.filter(organization=org_chung, active=True):
+      try:
+        course = CourseOverview.objects.get(id=org_course.course_id)
+        courses_chung.append(course)
+      except:
+        pass
+    
+    for org_course in OrganizationCourse.objects.filter(organization=org_hocsinh, active=True):
+      try:
+        course = CourseOverview.objects.get(id=org_course.course_id)
+        courses_hocsinh.append(course)
+      except:
+        pass
+    
+    for org_course in OrganizationCourse.objects.filter(organization=org_giaovien, active=True):
+      try:
+        course = CourseOverview.objects.get(id=org_course.course_id)
+        courses_giaovien.append(course)
+      except:
+        pass
+    
+  except Exception as e:
+    courses_chung = []
+    courses_hocsinh = []
+    courses_giaovien = []
+%>
+
+<main id="main" aria-label="Content" tabindex="-1">
+  <!-- Hero Section -->
+  <section class="courses-hero">
+    <h1>🎓 Khám Phá Khóa Học</h1>
+    <p>Lựa chọn khóa học phù hợp với bạn từ 3 danh mục dưới đây</p>
+  </section>
+
+  <!-- Main Container -->
+  <div class="courses-container">
+    
+    <!-- Category 1: Khóa học chung -->
+    <section class="category-section">
+      <div class="category-header">
+        <div class="category-icon chung">🌟</div>
+        <div class="category-info">
+          <h2>Khóa học chung</h2>
+          <p>Dành cho mọi đối tượng</p>
+        </div>
+        <div class="category-count">${len(courses_chung)} khóa học</div>
+      </div>
+      
+      % if courses_chung:
+        <div class="courses-grid">
+          % for course in courses_chung:
+            <article class="course-card">
+              <div class="course-image chung">
+                % if course.course_image_url:
+                  <img src="${course.course_image_url}" alt="${course.display_name}" />
+                % endif
+                <span class="course-badge">Chung</span>
+              </div>
+              <div class="course-content">
+                <h3 class="course-title">${course.display_name}</h3>
+                <p class="course-org">${course.org}</p>
+                <div class="course-footer">
+                  <a href="${reverse('about_course', args=[str(course.id)])}" class="course-btn">
+                    Xem chi tiết →
+                  </a>
+                </div>
+              </div>
+            </article>
+          % endfor
+        </div>
+      % else:
+        <div class="empty-state">
+          <div class="empty-state-icon">📚</div>
+          <p>Chưa có khóa học nào trong mục này</p>
+        </div>
+      % endif
+    </section>
+
+    <!-- Category 2: Học sinh/Sinh viên -->
+    <section class="category-section">
+      <div class="category-header">
+        <div class="category-icon hocsinh">📖</div>
+        <div class="category-info">
+          <h2>Học sinh/Sinh viên</h2>
+          <p>Khóa học dành cho học sinh, sinh viên</p>
+        </div>
+        <div class="category-count">${len(courses_hocsinh)} khóa học</div>
+      </div>
+      
+      % if courses_hocsinh:
+        <div class="courses-grid">
+          % for course in courses_hocsinh:
+            <article class="course-card">
+              <div class="course-image hocsinh">
+                % if course.course_image_url:
+                  <img src="${course.course_image_url}" alt="${course.display_name}" />
+                % endif
+                <span class="course-badge">Học sinh/SV</span>
+              </div>
+              <div class="course-content">
+                <h3 class="course-title">${course.display_name}</h3>
+                <p class="course-org">${course.org}</p>
+                <div class="course-footer">
+                  <a href="${reverse('about_course', args=[str(course.id)])}" class="course-btn">
+                    Xem chi tiết →
+                  </a>
+                </div>
+              </div>
+            </article>
+          % endfor
+        </div>
+      % else:
+        <div class="empty-state">
+          <div class="empty-state-icon">📚</div>
+          <p>Chưa có khóa học nào trong mục này</p>
+        </div>
+      % endif
+    </section>
+
+    <!-- Category 3: Giáo viên -->
+    <section class="category-section">
+      <div class="category-header">
+        <div class="category-icon giaovien">👨‍🏫</div>
+        <div class="category-info">
+          <h2>Giáo viên</h2>
+          <p>Khóa học bồi dưỡng dành cho giáo viên</p>
+        </div>
+        <div class="category-count">${len(courses_giaovien)} khóa học</div>
+      </div>
+      
+      % if courses_giaovien:
+        <div class="courses-grid">
+          % for course in courses_giaovien:
+            <article class="course-card">
+              <div class="course-image giaovien">
+                % if course.course_image_url:
+                  <img src="${course.course_image_url}" alt="${course.display_name}" />
+                % endif
+                <span class="course-badge">Giáo viên</span>
+              </div>
+              <div class="course-content">
+                <h3 class="course-title">${course.display_name}</h3>
+                <p class="course-org">${course.org}</p>
+                <div class="course-footer">
+                  <a href="${reverse('about_course', args=[str(course.id)])}" class="course-btn">
+                    Xem chi tiết →
+                  </a>
+                </div>
+              </div>
+            </article>
+          % endfor
+        </div>
+      % else:
+        <div class="empty-state">
+          <div class="empty-state-icon">📚</div>
+          <p>Chưa có khóa học nào trong mục này</p>
+        </div>
+      % endif
+    </section>
+
+  </div>
+</main>

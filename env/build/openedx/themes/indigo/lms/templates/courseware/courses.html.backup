@@ -1,0 +1,2765 @@
+<%page expression_filter="h"/>
+<%!
+  import json
+  from django.utils.translation import gettext as _
+  from openedx.core.djangolib.js_utils import js_escaped_string, dump_js_escaped_json
+  
+  # Import course discovery utilities
+  from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+  from django.conf import settings
+%>
+<%inherit file="../main.html" />
+<%
+  # Override course discovery for reliable server-side rendering
+  course_discovery_enabled = False  # Force server-side course listing
+  # Original: course_discovery_enabled = settings.FEATURES.get('ENABLE_COURSE_DISCOVERY')
+  
+  # Check if courses variable exists and get courses safely
+  try:
+    # Check if courses exists in template context
+    existing_courses = locals().get('courses', [])
+    
+    # If courses list is empty or doesn't exist, try to get all available courses
+    if not existing_courses:
+      try:
+        # Get all published course overviews - more comprehensive approach
+        from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+        from opaque_keys.edx.keys import CourseKey
+        from django.core.exceptions import ObjectDoesNotExist
+        
+        # Get all course overviews
+        all_courses = list(CourseOverview.objects.all())
+        
+        # Filter published and available courses
+        available_courses = []
+        for course in all_courses:
+          try:
+            # Check if course is published and visible
+            if (hasattr(course, 'catalog_visibility') and 
+                course.catalog_visibility in ['about', 'both']) or \
+               (not hasattr(course, 'catalog_visibility')):
+              available_courses.append(course)
+          except:
+            # If any error, skip this course
+            continue
+        
+        # Assign courses variable
+        courses = available_courses
+        
+      except Exception as e:
+        # If all else fails, try to get any courses for testing
+        try:
+          # Try to get at least one course for testing
+          courses = list(CourseOverview.objects.all()[:10])
+        except:
+          courses = []
+    else:
+      # Use existing courses
+      courses = existing_courses
+      
+  except Exception as e:
+    # Ultimate fallback - empty list
+    courses = []
+%>
+<%namespace name='static' file='../static_content.html'/>
+
+<%block name="head_extra">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  
+  <style>
+    /* HOMEPAGE DESIGN SYNCHRONIZATION - Global Reset */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Be Vietnam Pro', 'Inter', sans-serif !important;
+      line-height: 1.6;
+      color: #333;
+      background: #f8f9fa !important;
+    }
+
+    /* Remove default OpenedX styles - Match Homepage */
+    .content-wrapper {
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    main#main {
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+    
+
+    /* COURSES PAGE HEADER STYLES - SCOPED TO COURSES PAGE ONLY */
+    .mc1-find-courses .global-header {
+      background: #fff !important;
+      border-bottom: 1px solid #e5e5e5 !important;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+    }
+
+    .mc1-find-courses .global-header .nav-links a {
+      color: #333 !important;
+      text-decoration: none !important;
+    }
+
+    .mc1-find-courses .global-header .nav-links a:hover {
+      color: #007bff !important;
+    }
+
+    /* Header Button Styles - Scoped to Courses Page */
+    .find-courses .global-header .nav-links .btn {
+      padding: 8px 16px !important;
+      border-radius: 6px !important;
+      font-weight: 500 !important;
+      text-decoration: none !important;
+      border: 1px solid transparent !important;
+      transition: all 0.3s ease !important;
+      display: inline-block !important;
+      margin-left: 8px !important;
+    }
+
+    /* Register Button - Outline Style - Scoped */
+    .find-courses .global-header .nav-links .register-btn {
+      color: #007bff !important;
+      border-color: #007bff !important;
+      background: transparent !important;
+    }
+
+    .find-courses .global-header .nav-links .register-btn:hover {
+      background: #007bff !important;
+      color: #fff !important;
+      text-decoration: none !important;
+    }
+
+    /* Sign In Button - Filled Style - Scoped */
+    .find-courses .global-header .nav-links .sign-in-btn {
+      background: #007bff !important;
+      color: #fff !important;
+      border-color: #007bff !important;
+    }
+
+    /* SCOPED HIGH SPECIFICITY OVERRIDES FOR COURSES PAGE ONLY */
+    
+    /* Override OpenedX header navigation styles - COURSES PAGE ONLY */
+    .find-courses html body .global-header .nav-links .secondary .btn-holder .nav-item,
+    .find-courses html body .wrapper-header .global-header .nav-links .secondary .btn-holder .nav-item {
+      letter-spacing: normal !important;
+      margin: 0 8px !important;
+      padding: 8px 16px !important;
+      border-radius: 6px !important;
+      font-weight: 500 !important;
+      text-decoration: none !important;
+      border: 1px solid transparent !important;
+      transition: all 0.3s ease !important;
+      display: inline-block !important;
+    }
+
+    @media (min-width: 992px) {
+      .find-courses html body .global-header .nav-links .secondary .nav-item,
+      .find-courses html body .wrapper-header .global-header .nav-links .secondary .nav-item {
+        font-size: 1rem !important;
+        display: inline-block !important;
+        padding: 8px 16px !important;
+        margin: 0 8px !important;
+        border-radius: 6px !important;
+        font-weight: 500 !important;
+        text-decoration: none !important;
+        border: 1px solid transparent !important;
+        transition: all 0.3s ease !important;
+      }
+    }
+
+    /* Ensure nav links have consistent styling - COURSES PAGE ONLY */
+    .find-courses html body .global-header .nav-links .secondary .nav-item a,
+    .find-courses html body .global-header .nav-links .secondary .btn-holder .nav-item a {
+      color: #333 !important;
+      text-decoration: none !important;
+      font-weight: 500 !important;
+    }
+
+    .find-courses html body .global-header .nav-links .secondary .nav-item a:hover,
+    .find-courses html body .global-header .nav-links .secondary .btn-holder .nav-item a:hover {
+      color: #007bff !important;
+    }
+
+    /* Override any conflicting button styles - COURSES PAGE ONLY */
+    .find-courses html body .global-header .nav-links .secondary .btn-holder .btn,
+    .find-courses html body .global-header .nav-links .secondary .btn {
+      padding: 8px 16px !important;
+      border-radius: 6px !important;
+      font-weight: 500 !important;
+      margin: 0 8px !important;
+      display: inline-block !important;
+      transition: all 0.3s ease !important;
+    }
+
+        .cta-button:hover {
+      background: #0056b3;
+      color: white;
+      text-decoration: none;
+    }
+
+    /* LOADING STATE */
+    .courses-loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: #666;
+    }
+    
+    .loading-spinner {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #007bff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    /* SEARCH RESULTS INFO */
+    .mc1-search-results-info {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+      font-style: italic;
+    }
+
+    /* HOMEPAGE LAYOUT PATTERNS - EXACT MATCH */
+    .mc1-main-container {
+      /* max-width: 1400px; */
+      margin: 0 auto;
+      padding: 0 20px;
+      background: #f8f9fa;
+    }
+
+    /* HOMEPAGE COURSE GRID EXACT MATCH */
+    .courses-listing { 
+      display: grid !important;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+      gap: 24px !important;
+      list-style: none !important; 
+      margin: 0 !important; 
+      padding: 15px !important;
+      width: 100% !important;
+    }
+
+    /* HOMEPAGE TYPOGRAPHY SYNCHRONIZATION */
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Be Vietnam Pro', sans-serif !important;
+      font-weight: 600 !important;
+      color: #333 !important;
+    }
+
+    /* HOMEPAGE COURSE CARD SYNCHRONIZATION - Match Homepage Design */
+    html body .courses-listing-item .course,
+    html body .courses-listing-item .course-card,
+    html body .courses-listing .course,
+    html body .courses-listing .course-card {
+      background: #ffffff !important;
+      color: #333 !important;
+      border: 1px solid #e5e5e5 !important;
+      border-radius: 12px !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+      transition: all 0.3s ease !important;
+    }
+
+    html body .courses-listing-item .course:hover,
+    html body .courses-listing-item .course-card:hover,
+    html body .courses-listing .course:hover,
+    html body .courses-listing .course-card:hover {
+      transform: translateY(-4px) !important;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+      border-color: #007bff !important;
+    }
+    
+    html body .course-card .course-card__media,
+    html body .course .course-image {
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+      border-radius: 12px 12px 0 0 !important;
+    }
+    
+    html body .course-card .course-card__body,
+    html body .course .course-info {
+      background: #ffffff !important;
+      color: #333 !important;
+      padding: 20px !important;
+    }
+    
+    /* Modern Course Catalog - Simple & Clean Approach */
+    
+    /* Remove padding from content wrapper for course pages */
+    .content-wrapper {
+      padding: 0 !important;
+    }
+    
+    /* Hide legacy elements */
+    .page-head, .page-title, .hero, .course-heading-area h1,
+    .filters, #filter-bar, .search-facets { 
+      display: none !important; 
+    }
+
+    /* FORCE SEARCH FORM VISIBILITY - DEBUG */
+    .search-row,
+    .search-input-wrap,
+    .wrapper-search-context,
+    .wrapper-search-input,
+    .discovery-input,
+    .discovery-submit,
+    .button-holder {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+    
+    .search-row {
+      display: none !important;
+    }
+    
+    .wrapper-search-input {
+      display: flex !important;
+    }
+    
+    /* MOBILE SEARCH VISIBILITY */
+    @media (max-width: 768px) {
+      .search-row,
+      .search-input-wrap,
+      .wrapper-search-context,
+      .wrapper-search-input,
+      .discovery-input,
+      .discovery-submit {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+      }
+      
+      .discovery-input {
+        display: block !important;
+      }
+    }
+    
+    /* HOMEPAGE SEARCH BAR EXACT MATCH */
+    .search-row { 
+      display: none !important; 
+      gap: 20px !important; 
+      margin: 40px auto 60px !important; 
+      max-width: 900px !important;
+      align-items: center !important;
+      padding: 0 20px !important;
+      justify-content: center !important;
+      background: transparent !important;
+    }
+    
+    .search-input-wrap { 
+      position: relative !important; 
+      flex: 1 !important;
+      max-width: 600px !important;
+    }
+    
+    .wrapper-search-input {
+      position: relative !important;
+      width: 100% !important;
+      display: flex !important;
+      align-items: center !important;
+      gap: 16px !important;
+    }
+    
+    .search-input-wrap svg { 
+      position: absolute !important; 
+      left: 20px !important; 
+      top: 50% !important; 
+      transform: translateY(-50%) !important; 
+      z-index: 10 !important; 
+      width: 20px !important;
+      height: 20px !important;
+      opacity: 0.7 !important;
+      color: #666 !important;
+      pointer-events: none !important;
+    }
+    
+    .discovery-input { 
+      width: 100% !important; 
+      height: 56px !important; 
+      padding: 0 140px 0 56px !important; 
+      border: 0 !important; 
+      border-radius: 28px !important; 
+      background: #ffffff !important; 
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+      transition: all 0.3s ease !important; 
+      font-size: 16px !important;
+      font-weight: 500 !important;
+      color: #1e293b !important;
+      font-family: "Be Vietnam Pro", sans-serif !important;
+    }
+    
+    .discovery-input:focus { 
+      outline: none !important; 
+      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2) !important;
+      transform: translateY(-2px) !important;
+    }
+    
+    .discovery-input::placeholder {
+      color: #94a3b8 !important;
+    }
+
+    #clear-discovery { 
+      position: absolute; 
+      right: 100px; 
+      top: 50%; 
+      transform: translateY(-50%);
+      width: 20px; 
+      height: 20px; 
+      border-radius: 50%; 
+      border: 0; 
+      background: #f8f9fa;
+      color: #666; 
+      cursor: pointer; 
+      display: none; 
+      transition: all 0.3s ease;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 20px;
+      text-align: center;
+    }
+    
+    #clear-discovery:hover { 
+      background: #e9ecef; 
+    }
+    
+    .discovery-submit { 
+      height: 48px; 
+      min-width: 100px; 
+      padding: 0 24px; 
+      border-radius: 24px; 
+      border: 0;
+      background: #007bff; 
+      color: white; 
+      font-weight: 600; 
+      font-size: 16px;
+      cursor: pointer; 
+      transition: all 0.3s ease;
+      font-family: "Be Vietnam Pro", sans-serif;
+    }
+    
+    .discovery-submit:hover { 
+      background: #0056b3;
+      transform: translateY(-1px); 
+      box-shadow: 0 4px 16px rgba(0, 123, 255, 0.3);
+    }
+
+    /* Header Navigation Buttons - COURSES PAGE ONLY */
+    .find-courses html body .global-header .btn-holder .btn,
+    .find-courses html body .global-header .nav-links .btn {
+      background: #6A79E4 !important;
+      color: white !important;
+      border: none !important;
+      padding: 8px 20px !important;
+      border-radius: 8px !important;
+      font-weight: 600 !important;
+      text-decoration: none !important;
+      transition: all 0.3s ease !important;
+      margin-left: 8px !important;
+      font-family: "Inter", sans-serif !important;
+      font-size: 14px !important;
+    }
+
+    .find-courses html body .global-header .btn-holder .btn:hover,
+    .find-courses html body .global-header .nav-links .btn:hover {
+      background: #849BF1 !important;
+      color: white !important;
+      transform: translateY(-1px) !important;
+      box-shadow: 0 4px 12px rgba(106, 121, 228, 0.3) !important;
+    }
+
+    /* Header Navigation Links - COURSES PAGE ONLY */
+    .find-courses html body .global-header .nav-links .main .nav-tab a,
+    .find-courses html body .global-header .nav-links .nav-item a:not(.btn),
+    .find-courses html body .global-header .nav-links a:not(.btn),
+    .find-courses html body .global-header .nav-links a:visited:not(.btn) {
+      color: #1e293b !important;
+      text-decoration: none !important;
+      font-weight: 500 !important;
+      transition: all 0.3s ease !important;
+    }
+
+    .find-courses html body .global-header .nav-links .main .nav-tab a:hover,
+    .find-courses html body .global-header .nav-links .nav-item a:not(.btn):hover,
+    .find-courses html body .global-header .nav-links a:not(.btn):hover {
+      color: #6A79E4 !important;
+      border-bottom-color: #6A79E4 !important;
+    }
+
+    /* Ultra high specificity for OpenEdX override - COURSES PAGE ONLY */
+    .find-courses html body div.wrapper-header header.global div.global-header nav.nav-links div.main div.nav-item.nav-tab a,
+    .find-courses html body div.wrapper-header header.global div.global-header nav.nav-links a:not(.btn) {
+      color: #1e293b !important;
+      text-decoration: none !important;
+    }
+
+    @media (min-width: 992px) {
+      .find-courses html body .global-header .nav-links .main .nav-tab a {
+        color: #1e293b !important;
+        font-weight: 500 !important;
+      }
+    }
+    
+    #clear-discovery { 
+      position: absolute; 
+      right: 100px; 
+      top: 50%; 
+      transform: translateY(-50%);
+      width: 20px; 
+      height: 20px; 
+      border-radius: 50%; 
+      border: 0; 
+      background: #f8f9fa;
+      color: #666; 
+      cursor: pointer; 
+      display: none; 
+      transition: all 0.3s ease;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 20px;
+      text-align: center;
+    }
+    
+    #clear-discovery:hover { 
+      background: #e9ecef; 
+    }
+    
+    .discovery-submit { 
+      height: 48px; 
+      min-width: 100px; 
+      padding: 0 24px; 
+      border-radius: 24px; 
+      border: 0;
+      background: #007bff; 
+      color: white; 
+      font-weight: 600; 
+      font-size: 16px;
+      cursor: pointer; 
+      transition: all 0.3s ease;
+      font-family: "Be Vietnam Pro", sans-serif;
+    }
+    
+    .discovery-submit:hover { 
+      background: #0056b3;
+      transform: translateY(-1px); 
+      box-shadow: 0 4px 16px rgba(0, 123, 255, 0.3);
+    }
+
+    /* PAGE TITLE SECTION - HOMEPAGE STYLE */
+    .mc1-courses-page-header {
+      background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+      color: white;
+      text-align: center;
+      padding: 80px 20px 60px;
+      margin-bottom: 0;
+      position: relative;
+    }
+    
+    .courses-page-header::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.2);
+    }
+    
+    .mc1-courses-page-title {
+      font-size: 3rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+      font-family: 'Be Vietnam Pro', sans-serif;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .mc1-courses-page-subtitle {
+      font-size: 1.3rem;
+      opacity: 0.95;
+      max-width: 700px;
+      margin: 0 auto;
+      line-height: 1.5;
+    }
+
+    /* HOMEPAGE COURSE GRID EXACT MATCH */
+    .courses-listing { 
+      display: grid !important;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+      gap: 24px !important;
+      list-style: none !important; 
+      margin: 0 !important; 
+      padding: 15px !important;
+      width: 100% !important;
+    }
+
+    /* HOMEPAGE MAIN CONTAINER MATCH */
+    .mc1-courses-main-wrapper {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      background: transparent;
+    }
+    
+    .mc1-courses-container {
+      width: 100% !important;
+      background: transparent !important;
+    }
+    
+    .mc1-courses-listing-item,
+    .courses-listing-item { 
+      margin: 0 !important;
+      padding: 0 !important;
+      float: none !important;
+      min-height: 380px !important;
+    }
+    
+    /* HOMEPAGE COURSE CARDS EXACT MATCH */
+    .mc1-courses-listing-item .course,
+    .mc1-courses-listing-item article.course,
+    .mc1-courses-listing .course,
+    .mc1-courses-listing-item .course-card,
+    .mc1-courses-listing-item article.course-card,
+    .mc1-courses-listing .course-card,
+    .courses-listing-item .course,
+    .courses-listing-item article.course,
+    .courses-listing .course,
+    .courses-listing-item .course-card,
+    .courses-listing-item article.course-card,
+    .courses-listing .course-card,
+    .course,
+    .course-card,
+    article.course,
+    article.course-card,
+    .course-card-link .course-card,
+    a.course-card-link .course-card,
+    .course-card-link .course,
+    a.course-card-link .course { 
+      background: #fff !important;
+      border: 1px solid #e5e5e5 !important;
+      border-radius: 12px !important;
+      overflow: hidden !important;
+      transition: all 0.3s ease !important;
+      height: 380px !important;
+      min-height: 380px !important;
+      max-height: 380px !important;
+      display: flex !important;
+      flex-direction: column !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      color: inherit !important;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08) !important;
+    }
+    
+    .mc1-courses-listing-item .course:hover,
+    .mc1-courses-listing-item article.course:hover,
+    .mc1-courses-listing .course:hover,
+    .mc1-courses-listing-item .course-card:hover,
+    .mc1-courses-listing-item article.course-card:hover,
+    .mc1-courses-listing .course-card:hover,
+    .courses-listing-item .course:hover,
+    .courses-listing-item article.course:hover,
+    .courses-listing .course:hover,
+    .courses-listing-item .course-card:hover,
+    .courses-listing-item article.course-card:hover,
+    .courses-listing .course-card:hover,
+    .course:hover,
+    .course-card:hover,
+    article.course:hover,
+    article.course-card:hover {
+      transform: translateY(-4px) !important;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+    }
+    
+    /* Clickable course cards styling */
+    .course[data-clickable="true"],
+    .course-card[data-clickable="true"] {
+      cursor: pointer !important;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      user-select: none !important;
+      -webkit-user-select: none !important;
+      -moz-user-select: none !important;
+      -ms-user-select: none !important;
+    }
+    
+    .course[data-clickable="true"]:hover,
+    .course-card[data-clickable="true"]:hover {
+      transform: translateY(-6px) scale(1.02) !important;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.18) !important;
+      border-color: #2563eb !important;
+    }
+    
+    /* Smooth click animation */
+    .course[data-clickable="true"]:active,
+    .course-card[data-clickable="true"]:active {
+      transform: translateY(-2px) scale(0.98) !important;
+      transition: all 0.1s ease !important;
+    }
+    
+    /* Course image styling - Homepage style */
+    .course .course-image,
+    .course-card .course-card__media,
+    .course-image.course-card__media { 
+      position: relative !important; 
+      width: 100% !important; 
+      height: 200px !important;
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important; 
+      overflow: hidden !important; 
+      border-radius: 12px 12px 0 0 !important;
+      flex-shrink: 0 !important;
+    }
+    
+    .course .course-image img,
+    .course-card .course-card__media img,
+    .course-card .course-card__img { 
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important; 
+      height: 100% !important; 
+      object-fit: cover !important; 
+      display: block !important; 
+      transition: transform 0.3s ease !important;
+    }
+    
+    .course:hover .course-image img,
+    .course-card:hover .course-card__media img,
+    .course-card:hover .course-card__img { 
+      transform: scale(1.03) !important; 
+    }
+    
+    /* Course badge styling - unified */
+    .course-card__badge {
+      position: absolute !important;
+      top: 12px !important;
+      right: 12px !important;
+      background: rgba(59, 130, 246, 0.9) !important;
+      color: white !important;
+      padding: 6px 12px !important;
+      border-radius: 8px !important;
+      font-size: 12px !important;
+      font-weight: 600 !important;
+      z-index: 10 !important;
+      backdrop-filter: blur(8px) !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    }
+    
+    /* Fallback image styling */
+    .course .course-image::before {
+      content: "" !important;
+      position: absolute !important;
+      top: 50% !important;
+      left: 50% !important;
+      transform: translate(-50%, -50%) !important;
+      width: 60px !important;
+      height: 60px !important;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="%239ca3af"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>') center/contain no-repeat !important;
+      opacity: 0.3 !important;
+      z-index: 1 !important;
+    }
+    
+    .course .course-image img[src]:not([src=""]) + ::before {
+      display: none !important;
+    }
+    
+    /* Course content - Homepage proportion adjustment */
+    .course .course-info,
+    .course-card .course-card__body,
+    .course-info.course-card__body { 
+      display: flex !important; 
+      flex-direction: column !important; 
+      gap: 8px !important; 
+      padding: 20px !important;
+      flex: 1 !important;
+      height: 180px !important;
+      overflow: hidden !important;
+      background: #ffffff !important;
+      color: #333 !important;
+      justify-content: space-between !important;
+    }
+
+    /* CUSTOM COURSE INFO STYLING - Adjusted for title height */
+    .mc1-courses-container .courses .course .course-info {
+      padding: 20px !important;
+      height: 180px !important;
+      min-height: 180px !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: flex-start !important;
+      gap: 8px !important;
+    }
+    
+    /* HOMEPAGE COURSE TITLE EXACT MATCH */
+    .course .course-title,
+    .course-card .course-card__title,
+    .course h2.course-title,
+    .course-card h2.course-card__title,
+    .mc1-courses-container .courses .course .course-info .course-title {
+      font-size: 18px !important;
+      font-weight: 600 !important;
+      color: #333 !important;
+      margin-bottom: 8px !important;
+      line-height: 1.3 !important;
+      display: -webkit-box !important;
+      -webkit-line-clamp: 2 !important;
+      line-clamp: 2 !important;
+      -webkit-box-orient: vertical !important;
+      overflow: hidden !important;
+      font-family: "Be Vietnam Pro", sans-serif !important;
+      padding: 0 !important;
+      height: auto !important;
+    }
+
+    /* Course description and metadata - Homepage style */
+    .course .course-description,
+    .course-card .course-card__description,
+    .mc1-courses-container .courses .course .course-info .course-description,
+    .course-description,
+    div.course-description {
+      font-size: 12px !important;
+      color: #64748b !important;
+      line-height: 1.4 !important;
+      margin-bottom: 8px !important;
+      padding: 0 !important;
+      max-height: 34px !important;
+      overflow: hidden !important;
+      display: -webkit-box !important;
+      -webkit-line-clamp: 2 !important;
+      line-clamp: 2 !important;
+      -webkit-box-orient: vertical !important;
+      font-family: "Be Vietnam Pro", sans-serif !important;
+      word-wrap: break-word !important;
+      text-overflow: ellipsis !important;
+    }
+
+    .course .course-date,
+    .course-card .course-card__date {
+      font-size: 12px !important;
+      color: #999 !important;
+      font-weight: 400 !important;
+      margin-top: auto !important;
+      padding-top: 8px !important;
+      border-top: 1px solid #f0f0f0 !important;
+    }
+
+    /* ============================================
+       RESPONSIVE DESIGN HANDLED SEPARATELY BELOW
+       ============================================ */
+
+    /* EMPTY STATE STYLING */
+    .no-courses-message {
+      text-align: center;
+      padding: 80px 20px;
+      color: #666;
+    }
+    
+    .no-courses-message h3 {
+      font-size: 1.5rem;
+      color: #333;
+      margin-bottom: 16px;
+      font-family: 'Be Vietnam Pro', sans-serif;
+    }
+    
+    .no-courses-message p {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 1rem;
+    }
+    
+    .cta-button {
+      display: inline-block;
+      background: #007bff;
+      color: white;
+      padding: 12px 30px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 500;
+      transition: background 0.3s ease;
+      font-family: 'Be Vietnam Pro', sans-serif;
+    }
+    
+    .cta-button:hover {
+      background: #0056b3;
+      color: white;
+      text-decoration: none;
+    }
+
+    /* FORCE HIDE SEARCH ROW - TEMPORARY */
+    .find-courses .mc1-courses-main-wrapper .search-row,
+    .mc1-courses-main-wrapper .search-row,
+    div.search-row,
+    .search-row {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      height: 0 !important;
+      overflow: hidden !important;
+    }
+
+    /* DISABLE HOVER EFFECTS FOR COURSE CARD LINKS */
+    .mc1-courses-listing a:not(.btn):hover,
+    .mc1-courses-listing a:not(.btn):focus,
+    .mc1-courses-listing a:visited:not(.btn):hover,
+    .mc1-courses-listing a:visited:not(.btn):focus,
+    .courses-listing a:not(.btn):hover,
+    .courses-listing a:not(.btn):focus,
+    .courses-listing a:visited:not(.btn):hover,
+    .courses-listing a:visited:not(.btn):focus,
+    .course-card-link:hover,
+    .course-card-link:focus,
+    .mc1-courses-container a:not(.btn):hover,
+    .mc1-courses-container a:not(.btn):focus,
+    .mc1-courses-container a:visited:not(.btn):hover,
+    .mc1-courses-container a:visited:not(.btn):focus {
+      color: inherit !important;
+      text-decoration: none !important;
+      background: none !important;
+      border: none !important;
+      outline: none !important;
+    }
+
+    /* OVERRIDE DEFAULT LINK STYLES IN COURSE CARDS */
+    .mc1-courses-listing a:not(.btn),
+    .mc1-courses-listing a:visited:not(.btn),
+    .courses-listing a:not(.btn),
+    .courses-listing a:visited:not(.btn),
+    .course-card-link,
+    .mc1-courses-container a:not(.btn),
+    .mc1-courses-container a:visited:not(.btn) {
+      color: inherit !important;
+      text-decoration: none !important;
+      font: inherit !important;
+      transition: none !important;
+    }
+
+    /* ENSURE COURSE CARD HOVER ONLY AFFECTS THE CARD CONTAINER */
+    .course-card-link {
+      display: block !important;
+      color: inherit !important;
+      text-decoration: none !important;
+    }
+
+    .course-card-link:hover {
+      color: inherit !important;
+      text-decoration: none !important;
+    }
+
+    /* DISABLE HOVER EFFECTS FOR META SECTION */
+    .course-card__meta a:not(.btn):hover,
+    .course-card__meta a:not(.btn):focus,
+    .course-card__meta a:visited:not(.btn):hover,
+    .course-card__meta a:visited:not(.btn):focus,
+    .course-date a:not(.btn):hover,
+    .course-date a:not(.btn):focus {
+      color: #64748b !important;
+      text-decoration: none !important;
+      background: none !important;
+      border: none !important;
+      outline: none !important;
+    }
+
+    /* OVERRIDE LINK STYLES IN META SECTION */
+    .course-card__meta a:not(.btn),
+    .course-card__meta a:visited:not(.btn),
+    .course-date a:not(.btn),
+    .course-date a:visited:not(.btn) {
+      color: #64748b !important;
+      text-decoration: none !important;
+      font: inherit !important;
+      transition: none !important;
+    }
+    
+    /* Legacy course name styling */
+    .course .course-name,
+    .course .course-name *,
+    .course h2,
+    .course h2 *,
+    .course-card .course-card__name,
+    .course-card h2,
+    .course-card h2 * {
+      color: #0f172a !important;
+      background: transparent !important;
+      font-weight: 700 !important;
+      font-size: 16px !important;
+      margin: 0 !important;
+      line-height: 1.3 !important;
+    }
+    
+    .course .course-code,
+    .course-card .course-card__code {
+      color: #64748b !important;
+      font-size: 11px !important;
+      font-weight: 600 !important;
+      letter-spacing: 0.5px !important;
+      text-transform: uppercase !important;
+      margin-bottom: 4px !important;
+      display: block !important;
+      height: auto !important;
+      overflow: hidden !important;
+    }
+    
+    .course .course-organization {
+      color: #64748b !important; 
+      font-size: 12px !important;
+      font-weight: 500 !important;
+      margin: 0 0 8px 0 !important;
+      font-family: "Inter", sans-serif !important;
+      height: auto !important;
+      overflow: hidden !important;
+      line-height: 16.28px !important;
+      padding: 0 !important;
+    }
+
+    /* Specific course organization styling with padding reset */
+    .mc1-courses-container .courses .course .course-info .course-organization {
+      line-height: 16.28px !important;
+      padding: 0 !important;
+    }
+    
+    /* Course date styling - unified */
+    .course .course-date,
+    .course-card .course-card__meta,
+    .course-card .course-card__date,
+    .course-date.course-card__meta {
+      color: #64748b !important; 
+      font-size: 12px !important; 
+      font-weight: 500 !important;
+      margin: 8px 0 0 0 !important;
+      font-family: "Inter", sans-serif !important;
+      display: flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      height: auto !important;
+      overflow: visible !important;
+      margin-top: auto !important;
+      padding: 0 !important;
+      border-top: 1px solid #f0f0f0 !important;
+    }
+
+    /* Specific styling for course meta container */
+    .course-card__meta .course-card__date,
+    .course-date.course-card__meta .course-card__date {
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+    }
+    
+    /* Course CTA Button - HIDDEN since entire card is clickable */
+    .course .learn-more,
+    .course-card .course-card__cta {
+      display: none !important;
+    }
+    
+    /* Course icon styling */
+    .course-card .course-card__icon {
+      width: 16px !important;
+      height: 16px !important;
+      color: #64748b !important;
+      flex-shrink: 0 !important;
+      display: inline-block !important;
+    }
+
+    /* Course date text styling */
+    .course-card__date,
+    .course-card__meta span {
+      color: #64748b !important;
+      font-size: 12px !important;
+      font-weight: 500 !important;
+      font-family: "Inter", sans-serif !important;
+      line-height: 1.2 !important;
+    }
+    
+    .course .learn-more {
+      display: inline-flex !important; 
+      align-items: center !important; 
+      justify-content: center !important; 
+      height: 44px !important;
+      width: 100% !important; 
+      margin-top: auto !important;
+      border-radius: 22px !important; 
+      background: linear-gradient(135deg, #6A79E4 0%, #849BF1 100%) !important; 
+      color: white !important;
+      font-weight: 600 !important; 
+      font-size: 14px !important; 
+      text-decoration: none !important;
+      border: 0 !important; 
+      transition: all 0.3s ease !important; 
+      text-align: center !important;
+      font-family: "Inter", sans-serif !important;
+    }
+    
+    .course .learn-more:hover {
+      background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%) !important; 
+      transform: translateY(-2px) !important; 
+      color: white !important;
+      text-decoration: none !important; 
+    }
+    
+    /* Responsive */
+    @media (max-width: 1200px) {
+      .courses-listing-item { 
+        max-width: calc(33.333% - 16px) !important;
+        flex: 1 1 280px !important;
+      } 
+    }
+    
+    /* Enhanced Responsive Design */
+    
+    /* Large screens - 4 columns */
+    @media (min-width: 1200px) {
+      .mc1-courses-listing-item,
+      .courses-listing-item { 
+        max-width: calc(25% - 18px) !important;
+        flex: 1 1 280px !important;
+      }
+      
+      .mc1-courses-main-wrapper {
+        margin: 0 auto !important;
+        padding: 0 !important;
+      }
+    }
+    
+    /* Medium-large screens - 3 columns */
+    @media (max-width: 1199px) and (min-width: 901px) {
+      .mc1-courses-listing-item,
+      .courses-listing-item { 
+        max-width: calc(33.333% - 16px) !important;
+        flex: 1 1 300px !important;
+      }
+      
+      .mc1-courses-main-wrapper {
+        padding: 0 !important;
+      }
+    }
+    
+    /* Tablets - 2 columns */
+    @media (max-width: 900px) and (min-width: 641px) {
+      .mc1-courses-listing-item,
+      .courses-listing-item { 
+        max-width: calc(50% - 12px) !important;
+        flex: 1 1 280px !important;
+      }
+      
+      .mc1-courses-main-wrapper {
+        padding: 0 !important;
+      }
+      
+      /* Keep fixed image height for tablets */
+      .course .course-image,
+      .course-card .course-card__media {
+        height: 180px !important; /* Slightly smaller for tablets */
+      }
+      
+      /* Adjust card content for tablets - maintain fixed structure */
+      .course .course-info,
+      .course-card .course-card__body {
+        height: 180px !important; /* Adjust for smaller image */
+        padding: 16px !important;
+        gap: 6px !important;
+      }
+      
+      .course .course-title,
+      .course-card .course-card__title {
+        font-size: 15px !important;
+        height: 39px !important; /* Adjust for smaller font */
+      }
+    }
+    
+    /* Mobile - 1 column */
+    @media (max-width: 640px) {
+      .mc1-courses-listing-item,
+      .courses-listing-item { 
+        max-width: 100% !important;
+        flex: 1 1 100% !important;
+        margin-bottom: 20px !important;
+      }
+      
+      /* Mobile: much smaller card height to fit screen better */
+      .course,
+      .course-card,
+      article.course,
+      article.course-card {
+        height: 280px !important; /* Reduced from 320px */
+        min-height: 280px !important;
+        max-height: 280px !important;
+      }
+      
+      .course-card-link,
+      a.course-card-link {
+        height: 280px !important;
+      }
+      
+      .mc1-courses-main-wrapper {
+        padding: 0 !important; /* No padding */
+      }
+      
+      .mc1-courses-listing,
+      .courses-listing {
+        gap: 16px !important; /* Reduced gap */
+        padding: 15px !important;
+      }
+      
+      /* Smaller image height for mobile */
+      .course .course-image,
+      .course-card .course-card__media {
+        height: 140px !important; /* Reduced from 160px */
+      }
+      
+      /* Mobile card adjustments - compact layout */
+      .course .course-info,
+      .course-card .course-card__body {
+        height: 140px !important; /* Adjust for smaller image */
+        padding: 10px !important; /* Reduced padding */
+        gap: 4px !important; /* Tighter spacing */
+      }
+      
+      .course .course-title,
+      .course-card .course-card__title {
+        font-size: 15px !important; /* Slightly smaller */
+        height: 36px !important; /* Reduced height for 2 lines */
+        line-height: 1.2 !important; /* Tighter line height */
+        margin: 0 0 4px 0 !important;
+      }
+      
+      .course .course-code,
+      .course-card .course-card__code {
+        font-size: 11px !important;
+        height: 12px !important; /* Very compact */
+        margin-bottom: 2px !important;
+      }
+      
+      .course .course-organization {
+        font-size: 11px !important;
+        height: 12px !important;
+        margin: 0 0 4px 0 !important;
+      }
+      
+      .course .course-date,
+      .course-card .course-card__meta {
+        font-size: 11px !important;
+        height: 16px !important; /* Reduced height */
+        margin-top: auto !important;
+        gap: 3px !important;
+      }
+      
+      /* Icon size for mobile */
+      .course-card .course-card__icon {
+        width: 14px !important;
+        height: 14px !important;
+      }
+      
+      /* Mobile search adjustments - more compact */
+      .search-row { 
+        flex-direction: column !important; 
+        gap: 12px !important; /* Reduced gap */
+        padding: 0 !important;
+        margin: 16px auto 30px !important; /* Reduced margins */
+      }
+      
+      .discovery-input { 
+        padding-right: 45px !important; 
+        height: 40px !important; /* Smaller height */
+        font-size: 16px !important; /* Prevent zoom on iOS */
+      }
+      
+      #clear-discovery { 
+        right: 14px !important;
+        width: 18px !important;
+        height: 18px !important;
+      }
+      
+      .discovery-submit { 
+        width: 100% !important; 
+        height: 40px !important; /* Smaller height */
+        font-size: 15px !important;
+      }
+    }
+    
+    /* Extra small mobile devices - very compact */
+    @media (max-width: 480px) {
+      .mc1-courses-main-wrapper {
+        padding: 0 !important; /* No padding */
+      }
+      
+      /* Even smaller cards for tiny screens */
+      .course,
+      .course-card,
+      article.course,
+      article.course-card {
+        height: 260px !important; /* Very compact */
+        min-height: 260px !important;
+        max-height: 260px !important;
+      }
+      
+      .course-card-link,
+      a.course-card-link {
+        height: 260px !important;
+      }
+      
+      /* Smaller image for tiny screens */
+      .course .course-image,
+      .course-card .course-card__media {
+        height: 120px !important; /* Very small image */
+      }
+      
+      /* Very compact content area */
+      .course .course-info,
+      .course-card .course-card__body {
+        height: 140px !important;
+        padding: 8px !important; /* Minimal padding */
+        gap: 3px !important;
+      }
+      
+      .course .course-title,
+      .course-card .course-card__title {
+        font-size: 14px !important; /* Smaller font */
+        height: 32px !important; /* Compact title */
+        line-height: 1.15 !important;
+      }
+      
+      .course .course-code,
+      .course-card .course-card__code {
+        font-size: 10px !important;
+        height: 10px !important;
+      }
+      
+      .course .course-organization {
+        font-size: 10px !important;
+        height: 10px !important;
+      }
+      
+      .course .course-date,
+      .course-card .course-card__meta {
+        font-size: 10px !important;
+        height: 14px !important;
+      }
+      
+      /* Smaller gap for very small screens */
+      .mc1-courses-listing,
+      .courses-listing {
+        gap: 12px !important;
+        padding: 15px !important;
+      }
+      
+      .mc1-courses-listing-item,
+      .courses-listing-item {
+        margin-bottom: 12px !important;
+      }
+    }
+    
+    /* Override legacy CSS */
+    .find-courses {
+      background: transparent !important;
+    }
+
+    /* REMOVE ANY OVERLAY OR BLUR EFFECTS ON COURSES SECTION */
+    .find-courses,
+    .mc1-courses-main-wrapper,
+    .mc1-courses-container,
+    .courses,
+    .mc1-courses-listing,
+    .courses-listing,
+    main#main {
+      background: transparent !important;
+      backdrop-filter: none !important;
+      filter: none !important;
+      opacity: 1 !important;
+    }
+
+    /* ENSURE NO PSEUDO ELEMENTS CREATE OVERLAY */
+    .find-courses::before,
+    .find-courses::after,
+    .mc1-courses-main-wrapper::before,
+    .mc1-courses-main-wrapper::after,
+    .mc1-courses-container::before,
+    .mc1-courses-container::after {
+      display: none !important;
+    }
+
+    .find-courses .courses-container .courses:not(.no-course-discovery),
+    .university-profile .courses-container .courses:not(.no-course-discovery) {
+      float: none !important;
+      display: block !important;
+      margin-right: 0 !important;
+      width: 100% !important;
+    }
+    
+    .courses-container .courses {
+      display: block !important;
+      float: none !important;
+      width: 100% !important;
+    }
+
+    /* COURSE LIST CONTAINER FIXES */
+    .courses {
+      width: 100% !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      background: transparent !important;
+    }
+    
+    .courses .mc1-courses-listing,
+    .courses .courses-listing {
+      width: 100% !important;
+      max-width: none !important;
+    }
+
+    /* Fix Header Colors on Courses Page - SCOPED TO COURSES PAGE ONLY */
+    .find-courses header.global-header {
+      background: #fff !important;
+      border-bottom: 1px solid #e5e5e5 !important;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+    }
+
+    .find-courses header.global-header .nav-links .main .nav-tab a {
+      color: #1e293b !important;
+    }
+
+    .find-courses header.global-header .nav-links .main .nav-tab a.active,
+    .find-courses header.global-header .nav-links .main .nav-tab a:hover {
+      color: #6A79E4 !important;
+      border-bottom-color: #6A79E4 !important;
+    }
+
+    .find-courses header.global-header .nav-links .secondary .toggle-user-dropdown {
+      background: rgba(181, 199, 250, 0.3) !important;
+      color: #6A79E4 !important;
+    }
+
+    .find-courses header.global-header .nav-links .secondary .toggle-user-dropdown:after {
+      border-color: #6A79E4 !important;
+    }
+
+    .find-courses header.global-header .hamburger-menu .line {
+      background: #1e293b !important;
+    }
+
+    /* Theme toggle colors - COURSES PAGE ONLY */
+    .find-courses .theme-toggle-button .light-theme-icon,
+    .find-courses .theme-toggle-button .dark-theme-icon {
+      color: #1e293b !important;
+    }
+
+    /* Mobile menu fix - COURSES PAGE ONLY */
+    .find-courses .mobile-menu {
+      background: rgba(255, 255, 255, 0.98) !important;
+      backdrop-filter: blur(10px) !important;
+      border-bottom-color: #6A79E4 !important;
+    }
+
+    .find-courses .mobile-menu .mobile-nav-link a {
+      color: #1e293b !important;
+    }
+
+    .find-courses .mobile-menu .mobile-nav-link a:hover,
+    .find-courses .mobile-menu .mobile-nav-link a.active {
+      background: rgba(181, 199, 250, 0.3) !important;
+      color: #6A79E4 !important;
+    }
+
+    /* Dropdown menu fix - COURSES PAGE ONLY */
+    .find-courses header.global-header .nav-links .secondary .dropdown-user-menu {
+      background: rgba(255, 255, 255, 0.98) !important;
+      backdrop-filter: blur(10px) !important;
+    }
+
+    .find-courses header.global-header .nav-links .secondary .dropdown-user-menu .dropdown-item a {
+      color: #1e293b !important;
+    }
+
+    .find-courses header.global-header .nav-links .secondary .dropdown-user-menu .dropdown-item a:hover {
+      background: rgba(181, 199, 250, 0.3) !important;
+      color: #6A79E4 !important;
+    }
+
+    /* RESPONSIVE FOOTER STYLES */
+    footer.wrapper-footer {
+      background: #2d3748 !important;
+      color: #ffffff !important;
+      padding: 40px 20px 20px !important;
+      margin-top: auto !important;
+    }
+
+    footer.wrapper-footer .footer-content {
+      max-width: 1400px !important;
+      margin: 0 auto !important;
+      display: grid !important;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important;
+      gap: 30px !important;
+    }
+
+    footer.wrapper-footer h3,
+    footer.wrapper-footer h4 {
+      color: #ffffff !important;
+      font-size: 18px !important;
+      font-weight: 600 !important;
+      margin-bottom: 15px !important;
+      font-family: 'Be Vietnam Pro', sans-serif !important;
+    }
+
+    footer.wrapper-footer ul {
+      list-style: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    footer.wrapper-footer ul li {
+      margin-bottom: 8px !important;
+    }
+
+    footer.wrapper-footer a {
+      color: #cbd5e0 !important;
+      text-decoration: none !important;
+      transition: color 0.3s ease !important;
+      font-family: 'Be Vietnam Pro', sans-serif !important;
+    }
+
+    footer.wrapper-footer a:hover {
+      color: #6A79E4 !important;
+    }
+
+    footer.wrapper-footer .footer-bottom {
+      border-top: 1px solid #4a5568 !important;
+      margin-top: 30px !important;
+      padding-top: 20px !important;
+      text-align: center !important;
+      color: #a0aec0 !important;
+    }
+
+    /* RESPONSIVE FOOTER MEDIA QUERIES */
+    @media (max-width: 768px) {
+      footer.wrapper-footer {
+        padding: 30px 15px 15px !important;
+      }
+
+      footer.wrapper-footer .footer-content {
+        grid-template-columns: 1fr !important;
+        gap: 20px !important;
+        text-align: center !important;
+      }
+
+      footer.wrapper-footer h3,
+      footer.wrapper-footer h4 {
+        font-size: 16px !important;
+        margin-bottom: 10px !important;
+      }
+
+      footer.wrapper-footer .footer-bottom {
+        margin-top: 20px !important;
+        padding-top: 15px !important;
+        font-size: 14px !important;
+      }
+    }
+
+    @media (max-width: 480px) {
+      footer.wrapper-footer {
+        padding: 20px 10px 10px !important;
+      }
+
+      footer.wrapper-footer .footer-content {
+        gap: 15px !important;
+      }
+
+      footer.wrapper-footer h3,
+      footer.wrapper-footer h4 {
+        font-size: 14px !important;
+        margin-bottom: 8px !important;
+      }
+
+      footer.wrapper-footer ul li {
+        margin-bottom: 5px !important;
+      }
+
+      footer.wrapper-footer a {
+        font-size: 14px !important;
+      }
+
+      footer.wrapper-footer .footer-bottom {
+        margin-top: 15px !important;
+        padding-top: 10px !important;
+        font-size: 12px !important;
+      }
+    }
+
+    /* COURSE GRID MATCHING HOMEPAGE DESIGN */
+    .mc1-courses-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+      list-style: none;
+      padding: 20px;
+      margin: 0;
+      margin: 0 auto;
+    }
+
+    /* Responsive breakpoints matching homepage */
+    @media (max-width: 1400px) {
+      .mc1-courses-main-wrapper {
+        padding: 40px 20px;
+      }
+    }
+
+    @media (max-width: 1200px) {
+      .mc1-courses-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        padding: 20px;
+      }
+      
+      .mc1-courses-main-wrapper {
+        padding: 30px 20px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .mc1-courses-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+        padding: 20px;
+      }
+      
+      .mc1-courses-main-wrapper {
+        padding: 20px 15px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .mc1-courses-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+        padding: 20px;
+      }
+      
+      .mc1-courses-main-wrapper {
+        padding: 20px 15px;
+      }
+    }
+
+    /* Course cards matching exact design from homepage */
+    .mc1-course-item {
+      background: #fff;
+      border-radius: 16px;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e5e7eb;
+      height: auto;
+      min-height: 420px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .mc1-course-item:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    }
+
+    .mc1-course-card-link {
+      text-decoration: none !important;
+      color: inherit !important;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .mc1-course-image {
+      height: 180px;
+      overflow: hidden;
+      position: relative;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+    }
+
+    .mc1-course-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+
+    .mc1-course-item:hover .mc1-course-image img {
+      transform: scale(1.05);
+    }
+
+    .mc1-course-placeholder {
+      height: 100%;
+      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 48px;
+      font-weight: 700;
+    }
+
+    .mc1-course-overlay {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 2;
+    }
+
+    .mc1-course-level {
+      background: rgba(59, 130, 246, 0.9);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 12px;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      backdrop-filter: blur(8px);
+    }
+
+    .mc1-course-info {
+      padding: 20px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .mc1-course-header {
+      margin-bottom: 12px;
+    }
+
+    .mc1-course-code {
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      color: #8b5cf6;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      letter-spacing: 0.8px;
+    }
+
+    .mc1-course-title {
+      font-family: 'Inter', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: #1f2937;
+      margin: 0 0 12px 0;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-decoration: none;
+    }
+
+    .mc1-course-description {
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      color: #6b7280;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      flex: 1;
+      margin-bottom: 16px;
+    }
+
+    .mc1-course-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .mc1-course-date,
+    .mc1-course-instructor,
+    .mc1-course-effort,
+    .mc1-course-language {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      color: #666;
+      padding: 6px 8px;
+      border-radius: 4px;
+      background: #f8f9fa;
+    }
+
+    .mc1-course-date {
+      background: #e8f5e8;
+      color: #2d5016;
+      border-left: 4px solid #28a745;
+    }
+
+    .mc1-course-instructor {
+      background: #e3f2fd;
+      color: #1565c0;
+    }
+
+    .mc1-course-effort {
+      background: #fff3e0;
+      color: #e65100;
+    }
+
+    .mc1-course-date svg,
+    .mc1-course-instructor svg,
+    .mc1-course-effort svg,
+    .mc1-course-language svg {
+      width: 16px;
+      height: 16px;
+      color: currentColor;
+      flex-shrink: 0;
+      opacity: 0.8;
+    }
+
+    .mc1-course-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px;
+      border-top: 1px solid #f0f0f0;
+    }
+
+    .mc1-course-price {
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .mc1-course-pacing {
+      background: #e8f5e8;
+      color: #2d5016;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .mc1-course-end-date {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #fef0e7;
+      color: #c0392b;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 12px;
+    }
+
+    .mc1-course-weeks {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #e8f4fd;
+      color: #2980b9;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 12px;
+    }
+
+    .mc1-course-end-date svg,
+    .mc1-course-weeks svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    .mc1-course-certificate {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #fff3cd;
+      color: #856404;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 12px;
+    }
+
+    .mc1-course-certificate svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    .mc1-price-amount {
+      color: #28a745;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .mc1-price-free {
+      color: #007bff;
+      font-size: 13px;
+      font-weight: 600;
+      background: #e3f2fd;
+      padding: 6px 12px;
+      border-radius: 16px;
+    }
+
+    .mc1-enrolled-badge {
+      background: #28a745;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 16px;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .mc1-enroll-text {
+      color: #007bff;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    /* Mobile responsive adjustments */
+    @media (max-width: 768px) {
+      .mc1-course-item {
+        height: 350px;
+      }
+      
+      .mc1-course-image {
+        height: 160px;
+      }
+      
+      .mc1-course-info {
+        padding: 16px;
+      }
+      
+      .mc1-course-title {
+        font-size: 15px;
+        height: 38px;
+      }
+      
+      .mc1-course-description {
+        font-size: 12px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .mc1-course-item {
+        height: 320px;
+      }
+      
+      .mc1-course-image {
+        height: 140px;
+      }
+      
+      .mc1-course-title {
+        font-size: 16px;
+      }
+      
+      .mc1-course-footer {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+      }
+      
+      .mc1-course-cta {
+        width: 100%;
+        text-align: center;
+      }
+    }
+
+    /* MI1 DISCOVERY COURSES STYLING - MATCHING NEW DESIGN */
+    .mc1-courses-listing,
+    .mc1-courses-list {
+      display: grid !important;
+      grid-template-columns: repeat(4, 1fr) !important;
+      gap: 24px !important;
+      list-style: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      max-width: 1200px !important;
+      margin: 0 auto !important;
+    }
+
+    .mc1-courses-listing-item {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: none !important;
+    }
+
+    /* Apply same styling to discovery course cards */
+    .mc1-courses-listing .course,
+    .mc1-courses-listing article.course,
+    .mc1-courses-listing .course-card,
+    .mc1-courses-listing article.course-card {
+      background: #fff !important;
+      border-radius: 16px !important;
+      overflow: hidden !important;
+      transition: all 0.3s ease !important;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1) !important;
+      border: 1px solid #e5e7eb !important;
+      height: auto !important;
+      min-height: 420px !important;
+      display: flex !important;
+      flex-direction: column !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    .mc1-courses-listing .course:hover,
+    .mc1-courses-listing article.course:hover,
+    .mc1-courses-listing .course-card:hover,
+    .mc1-courses-listing article.course-card:hover {
+      transform: translateY(-8px) !important;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    /* Course image in discovery */
+    .mc1-courses-listing .course-image,
+    .mc1-courses-listing .course-card__media {
+      height: 180px !important;
+      overflow: hidden !important;
+      position: relative !important;
+      flex-shrink: 0 !important;
+      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%) !important;
+    }
+
+    .mc1-courses-listing .course-image img,
+    .mc1-courses-listing .course-card__media img {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover !important;
+      transition: transform 0.3s ease !important;
+    }
+
+    /* Course content in discovery */
+    .mc1-courses-listing .course-info,
+    .mc1-courses-listing .course-card__body {
+      padding: 24px !important;
+      flex: 1 !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+
+    .mc1-courses-listing .course-title,
+    .mc1-courses-listing .course-card__title,
+    .mc1-courses-listing h2 {
+      font-family: 'Inter', sans-serif !important;
+      font-size: 20px !important;
+      font-weight: 700 !important;
+      color: #111827 !important;
+      margin: 0 0 12px 0 !important;
+      line-height: 1.3 !important;
+      display: -webkit-box !important;
+      -webkit-line-clamp: 2 !important;
+      line-clamp: 2 !important;
+      -webkit-box-orient: vertical !important;
+      overflow: hidden !important;
+      min-height: 52px !important;
+    }
+
+    .mc1-courses-listing .course-description,
+    .mc1-courses-listing .course-card__description {
+      font-family: 'Inter', sans-serif !important;
+      font-size: 14px !important;
+      color: #6b7280 !important;
+      line-height: 1.5 !important;
+      margin: 0 0 20px 0 !important;
+      display: -webkit-box !important;
+      -webkit-line-clamp: 2 !important;
+      line-clamp: 2 !important;
+      -webkit-box-orient: vertical !important;
+      overflow: hidden !important;
+      flex: 1 !important;
+    }
+
+    /* Add footer to discovery courses */
+    .mc1-courses-listing .course::after,
+    .mc1-courses-listing .course-card::after {
+      content: "Vào học" !important;
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+      padding: 20px 24px !important;
+      border-top: 1px solid #f3f4f6 !important;
+      background: #f9fafb !important;
+      font-family: 'Inter', sans-serif !important;
+      font-size: 14px !important;
+      font-weight: 600 !important;
+      margin-top: auto !important;
+    }
+
+    /* Responsive for discovery courses */
+    @media (max-width: 1200px) {
+      .mc1-courses-listing,
+      .mc1-courses-list {
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 20px !important;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .mc1-courses-listing,
+      .mc1-courses-list {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 16px !important;
+      }
+      
+      .mc1-courses-listing .course,
+      .mc1-courses-listing .course-card {
+        min-height: 380px !important;
+      }
+      
+      .mc1-courses-listing .course-image,
+      .mc1-courses-listing .course-card__media {
+        height: 160px !important;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .mc1-courses-listing,
+      .mc1-courses-list {
+        grid-template-columns: 1fr !important;
+        gap: 20px !important;
+      }
+      
+      .mc1-courses-listing .course,
+      .mc1-courses-listing .course-card {
+        min-height: 360px !important;
+      }
+      
+      .mc1-courses-listing .course-image,
+      .mc1-courses-listing .course-card__media {
+        height: 140px !important;
+      }
+    }
+  </style>
+</%block>
+
+<%block name="js_extra">
+  <script type="text/javascript" src="${static.url('common/js/vendor/bootstrap.bundle.js')}"></script>
+</%block>
+
+% if course_discovery_enabled:
+<%block name="header_extras">
+  % for template_name in ["course_card", "filter_bar", "filter", "facet", "facet_option"]:
+  <script type="text/template" id="${template_name}-tpl">
+    <%static:include path="discovery/${template_name}.underscore" />
+  </script>
+  % endfor
+  <%static:require_module module_name="js/discovery/discovery_factory" class_name="DiscoveryFactory">
+    DiscoveryFactory(
+      ${course_discovery_meanings | n, dump_js_escaped_json},
+      getParameterByName('search_query'),
+      "${user_language | n, js_escaped_string}",
+      "${user_timezone | n, js_escaped_string}",
+      ${set_default_filter | n, dump_js_escaped_json}
+    );
+  </%static:require_module>
+</%block>
+% endif
+
+<%block name="pagetitle">${_("Các khóa học")}</%block>
+
+<main id="main" aria-label="${_('Nội dung')}" tabindex="-1">
+  <section class="mc1-find-courses">
+    <div class="mc1-courses-main-wrapper">
+      <section class="mc1-courses-container">
+
+        <!-- SEARCH - Always show -->
+        <!-- <div class="mc1-search-row">
+          <div class="mc1-search-input-wrap">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path fill-rule="evenodd" clip-rule="evenodd" d="M8 4C5.79086 4 4 5.79086 4 8C4 10.2091 5.79086 12 8 12C10.2091 12 12 10.2091 12 8C12 5.79086 10.2091 4 8 4ZM2 8C2 4.68629 4.68629 2 8 2C11.3137 2 14 4.68629 14 8C14 9.29583 13.5892 10.4957 12.8907 11.4765L17.7071 16.2929C18.0976 16.6834 18.0976 17.3166 17.7071 17.7071C17.3166 18.0976 16.6834 18.0976 16.2929 17.7071L11.4765 12.8907C10.4957 13.5892 9.29583 14 8 14C4.68629 14 2 11.3137 2 8Z" fill="#9CA3AF"/>
+            </svg>
+
+            <div id="discovery-form" role="search" aria-label="course" class="mc1-wrapper-search-context" data-has-discovery="true">
+              <form id="edx-discovery-search-form" class="mc1-wrapper-search-input" novalidate>
+                <label class="sr" for="discovery-input">${_('Tìm kiếm khóa học')}</label>
+                <input id="discovery-input" class="mc1-discovery-input" name="search_query" type="text"
+                       placeholder="${_('Khám phá khóa học')}" autocomplete="off" aria-describedby="discovery-message"/>
+                <button id="clear-discovery" type="button" title="${_('Xoá từ khóa')}" aria-label="${_('Xoá từ khóa')}">×</button>
+                <div class="mc1-button-holder">
+                  <button type="submit" class="mc1-discovery-submit" title="${_('Tìm kiếm')}">${_('Tìm kiếm')}</button>
+                </div>
+              </form>
+              <div id="discovery-message" class="mc1-search-status-label" role="status" aria-live="polite"></div>
+            </div>
+          </div>
+        </div> -->
+
+        % if course_discovery_enabled:
+        <!-- Hidden filters -->
+        <div id="filter-bar" class="mc1-filters hide-phone is-collapsed" aria-hidden="true"></div>
+        <aside class="mc1-search-facets" aria-hidden="true">
+          <section class="mc1-search-facets-lists" aria-hidden="true"></section>
+        </aside>
+        % endif
+
+        <!-- COURSE GRID -->
+        % if course_discovery_enabled:
+          <div class="mc1-course-holder mc1-courses" role="region" aria-label="${_('Danh sách khóa học')}">
+            <ul class="mc1-courses-listing mc1-courses-list"></ul>
+            
+            <!-- FALLBACK: Show server-side courses if discovery fails -->
+            % if 'courses' in locals() and courses:
+            <div style="display: none;" class="mc1-courses-fallback">
+              <ul class="mc1-courses-listing mc1-courses-list">
+                % for course in courses:
+                <li class="mc1-courses-listing-item">
+                  <%include file="../course.html" args="course=course" />
+                </li>
+                % endfor
+              </ul>
+            </div>
+            % endif
+          </div>
+        % else:
+          <div class="mc1-course-holder mc1-courses no-course-discovery" role="region" aria-label="${_('Danh sách khóa học')}">
+            <div class="mc1-courses-grid">
+              % for course in courses:
+              <div class="mc1-course-item">
+                <a href="/courses/${course.id}/about" class="mc1-course-card-link">
+                  <div class="mc1-course-image">
+                    <%
+                      course_image = None
+                      try:
+                        course_image = course.course_image_url if hasattr(course, 'course_image_url') else None
+                      except:
+                        course_image = None
+                    %>
+                    % if course_image:
+                      <img src="${course_image}" alt="${course.display_name_with_default | h}" loading="lazy" />
+                    % else:
+                      <div class="mc1-course-placeholder">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                          <line x1="16" y1="2" x2="16" y2="6"/>
+                          <line x1="8" y1="2" x2="8" y2="6"/>
+                          <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                      </div>
+                    % endif
+                    <div class="mc1-course-overlay">
+                      <div class="mc1-course-level">
+                        <%
+                          course_level = None
+                          try:
+                            course_level = course.course_level if hasattr(course, 'course_level') else None
+                            if not course_level:
+                              course_level = course.effort if hasattr(course, 'effort') else None
+                          except:
+                            course_level = None
+                        %>
+                        % if course_level:
+                          ${course_level}
+                        % else:
+                          Cơ bản
+                        % endif
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="mc1-course-info">
+                    <div class="mc1-course-header">
+                      <%
+                        course_org = None
+                        course_number = None
+                        try:
+                          course_org = course.display_organization if hasattr(course, 'display_organization') else None
+                          course_number = course.display_number_with_default if hasattr(course, 'display_number_with_default') else None
+                        except:
+                          course_org = None
+                          course_number = None
+                      %>
+                      % if course_org:
+                        <div class="mc1-course-code">
+                          % if course_number:
+                            ${course_org} - ${course_number}
+                          % else:
+                            ${course_org}
+                          % endif
+                        </div>
+                      % endif
+                      <h3 class="mc1-course-title">${course.display_name_with_default | h}</h3>
+                    </div>
+                    
+                    <%
+                      course_desc = None
+                      try:
+                        course_desc = course.short_description if hasattr(course, 'short_description') else None
+                        if not course_desc:
+                          course_desc = course.description if hasattr(course, 'description') else None
+                      except:
+                        course_desc = None
+                    %>
+                    % if course_desc:
+                      <p class="mc1-course-description">${course_desc | h}</p>
+                    % endif
+                    
+                    <div class="mc1-course-meta">
+                      <%
+                        start_date = None
+                        instructor_name = None
+                        course_effort = None
+                        course_language = None
+                        try:
+                          # Try multiple sources for start date
+                          start_date = getattr(course, 'start_date_text', None)
+                          if not start_date:
+                            start_date = getattr(course, 'start_display_text', None)
+                          if not start_date:
+                            start_date_obj = getattr(course, 'start', None)
+                            if start_date_obj:
+                              try:
+                                if hasattr(start_date_obj, 'strftime'):
+                                  start_date = start_date_obj.strftime('%d/%m/%Y')
+                                else:
+                                  start_date = str(start_date_obj)
+                              except:
+                                start_date = 'Bắt đầu ngay'
+                          if not start_date:
+                            start_date = 'Bắt đầu ngay'
+                          
+                          # Try to get instructor information
+                          if hasattr(course, 'instructor_info') and course.instructor_info:
+                            instructor_name = course.instructor_info.get('instructor_name', None)
+                          elif hasattr(course, 'course_staff') and course.course_staff:
+                            instructor_name = course.course_staff[0].get('name', None) if course.course_staff else None
+                          
+                          # Course effort/workload
+                          course_effort = getattr(course, 'effort', None)
+                          if not course_effort:
+                            course_effort = getattr(course, 'workload', None)
+                          
+                          # Course language
+                          course_language = getattr(course, 'language', None)
+                          if course_language == 'vi' or course_language == 'vi-vn':
+                            course_language = 'Tiếng Việt'
+                          elif course_language == 'en' or course_language == 'en-us':
+                            course_language = 'Tiếng Anh'
+                        except:
+                          start_date = 'Bắt đầu ngay'
+                          instructor_name = None
+                          course_effort = None
+                          course_language = None
+                      %>
+                      <!-- Always show start date since we have fallback -->
+                      <div class="mc1-course-date">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                          <line x1="16" y1="2" x2="16" y2="6"/>
+                          <line x1="8" y1="2" x2="8" y2="6"/>
+                          <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        <span>
+                          % if start_date == "Bắt đầu ngay":
+                            Bắt đầu ngay
+                          % else:
+                            Bắt đầu: ${start_date}
+                          % endif
+                        </span>
+                      </div>
+                      
+                      % if instructor_name:
+                        <div class="mc1-course-instructor">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                          </svg>
+                          <span>Giảng viên: ${instructor_name}</span>
+                        </div>
+                      % endif
+                      
+                      % if course_effort:
+                        <div class="mc1-course-effort">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                          </svg>
+                          <span>Khuyến nghị: ${course_effort}</span>
+                        </div>
+                      % endif
+                      
+                      % if course_language:
+                        <div class="mc1-course-language">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M2 12h20"/>
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                          </svg>
+                          <span>Ngôn ngữ: ${course_language}</span>
+                        </div>
+                      % endif
+                    </div>
+                  </div>
+                  
+                  <!-- Price and CTA Section matching homepage -->
+                  <div class="mc1-course-footer">
+                    <div class="mc1-course-info-footer">
+                      <div class="mc1-course-price">
+                        <%
+                          first_mode = None
+                          has_certificate = False
+                          end_date = None
+                          weeks_to_complete = None
+                          
+                          if hasattr(course, 'modes') and course.modes:
+                            try:
+                              first_mode = course.modes.first()
+                            except:
+                              try:
+                                first_mode = course.modes.all()[0] if course.modes.all() else None
+                              except:
+                                first_mode = None
+                          
+                          # Check end date
+                          try:
+                            end_date = getattr(course, 'end_date_text', None)
+                            if not end_date:
+                              end_date = getattr(course, 'end_date', None)
+                              if end_date:
+                                end_date = end_date.strftime('%d/%m/%Y') if hasattr(end_date, 'strftime') else str(end_date)
+                          except:
+                            end_date = None
+                          
+                          # Check weeks to complete
+                          try:
+                            weeks_to_complete = getattr(course, 'weeks_to_complete', None)
+                            if not weeks_to_complete:
+                              weeks_to_complete = getattr(course, 'estimated_weeks', None)
+                          except:
+                            weeks_to_complete = None
+                          
+                          # Check certificate
+                          try:
+                            has_certificate = getattr(course, 'has_certificates', False)
+                            if not has_certificate and first_mode:
+                              has_certificate = getattr(first_mode, 'certificate', False)
+                          except:
+                            has_certificate = False
+                        %>
+                        % if first_mode and hasattr(first_mode, 'min_price') and first_mode.min_price > 0:
+                          <span class="mc1-price-amount">${int(first_mode.min_price)}₫</span>
+                        % else:
+                          <span class="mc1-price-free"></span>
+                        % endif
+                        
+                        % if end_date:
+                          <span class="mc1-course-end-date">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                              <line x1="16" y1="2" x2="16" y2="6"/>
+                              <line x1="8" y1="2" x2="8" y2="6"/>
+                              <line x1="3" y1="10" x2="21" y2="10"/>
+                            </svg>
+                            Kết thúc: ${end_date}
+                          </span>
+                        % endif
+                        
+                        % if weeks_to_complete:
+                          <span class="mc1-course-weeks">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <circle cx="12" cy="12" r="10"/>
+                              <path d="M12 6v6l4 2"/>
+                            </svg>
+                            ${weeks_to_complete} tuần
+                          </span>
+                        % endif
+                        
+                        % if has_certificate:
+                          <span class="mc1-course-certificate">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                            </svg>
+                            Chứng chỉ
+                          </span>
+                        % endif
+                      </div>
+                    </div>
+                    <div class="mc1-course-action">
+                      <%
+                        is_enrolled = False
+                        try:
+                          is_enrolled = course.user_has_enrolled if hasattr(course, 'user_has_enrolled') else False
+                        except:
+                          is_enrolled = False
+                      %>
+                      % if is_enrolled:
+                        <span class="mc1-enrolled-badge">Vào học</span>
+                      % else:
+                        <span class="mc1-enroll-text">Vào học</span>
+                      % endif
+                    </div>
+                  </div>
+                </a>
+              </div>
+              % endfor
+            </div>
+          </div>
+        % endif
+
+        % if course_discovery_enabled:
+        <script>
+          (function () {
+            function getParam(name){
+              var m=new RegExp('[?&]'+name+'=([^&]*)').exec(window.location.search);
+              return m&&decodeURIComponent(m[1].replace(/\+/g,' '))||'';
+            }
+            var input = document.getElementById('discovery-input');
+            var form = document.getElementById('edx-discovery-search-form');
+            var clearBtn = document.getElementById('clear-discovery');
+            var msgEl = document.getElementById('discovery-message');
+            var listEl = document.querySelector('.mc1-courses-listing') || document.querySelector('.courses-listing');
+
+            // Init from URL
+            var q = getParam('search_query'); 
+            if(q){ 
+              input.value = q; 
+              clearBtn.style.display='inline-block'; 
+            }
+            
+            // Event listeners
+            input.addEventListener('input', function(){ 
+              clearBtn.style.display = input.value.length ? 'inline-block' : 'none'; 
+            });
+            
+            clearBtn.addEventListener('click', function(e){ 
+              e.preventDefault(); 
+              input.value=''; 
+              this.style.display='none'; 
+              input.focus(); 
+            });
+
+            // Force flexbox layout
+            // Responsive layout enforcement
+            function forceFlexLayout() {
+              if (listEl) {
+                listEl.style.setProperty('display', 'flex', 'important');
+                listEl.style.setProperty('flex-wrap', 'wrap', 'important');
+                listEl.style.setProperty('gap', '24px', 'important');
+                
+                var items = listEl.querySelectorAll('.mc1-courses-listing-item, .courses-listing-item');
+                items.forEach(function(item) {
+                  // Get current screen width for responsive behavior
+                  var screenWidth = window.innerWidth;
+                  
+                  if (screenWidth >= 1200) {
+                    // Large screens: 4 columns
+                    item.style.setProperty('flex', '1 1 280px', 'important');
+                    item.style.setProperty('max-width', 'calc(25% - 18px)', 'important');
+                  } else if (screenWidth >= 901) {
+                    // Medium screens: 3 columns
+                    item.style.setProperty('flex', '1 1 300px', 'important');
+                    item.style.setProperty('max-width', 'calc(33.333% - 16px)', 'important');
+                  } else if (screenWidth >= 641) {
+                    // Tablets: 2 columns
+                    item.style.setProperty('flex', '1 1 280px', 'important');
+                    item.style.setProperty('max-width', 'calc(50% - 12px)', 'important');
+                  } else {
+                    // Mobile: 1 column
+                    item.style.setProperty('flex', '1 1 100%', 'important');
+                    item.style.setProperty('max-width', '100%', 'important');
+                  }
+                  
+                  var course = item.querySelector('.course');
+                  if (course) {
+                    course.style.setProperty('width', '100%', 'important');
+                    course.style.setProperty('float', 'none', 'important');
+                    
+                    // Enforce fixed heights based on screen size
+                    if (screenWidth >= 641) {
+                      // Desktop/Tablet: Full height
+                      course.style.setProperty('height', '400px', 'important');
+                      var courseImage = course.querySelector('.course-image, .course-card__media');
+                      if (courseImage) {
+                        courseImage.style.setProperty('height', screenWidth >= 901 ? '200px' : '180px', 'important');
+                      }
+                    } else if (screenWidth >= 481) {
+                      // Mobile: Compact height 
+                      course.style.setProperty('height', '280px', 'important');
+                      var courseImage = course.querySelector('.course-image, .course-card__media');
+                      if (courseImage) {
+                        courseImage.style.setProperty('height', '140px', 'important');
+                      }
+                    } else {
+                      // Extra small mobile: Very compact
+                      course.style.setProperty('height', '260px', 'important');
+                      var courseImage = course.querySelector('.course-image, .course-card__media');
+                      if (courseImage) {
+                        courseImage.style.setProperty('height', '120px', 'important');
+                      }
+                    }
+                  }
+                });
+                
+                console.log('Responsive layout applied to', items.length, 'courses for screen width:', window.innerWidth);
+              }
+            }
+
+            // Apply layout on DOM changes AND window resize
+            if (window.MutationObserver && listEl) {
+              new MutationObserver(forceFlexLayout).observe(listEl, {childList: true});
+            }
+            
+            // Add resize listener for responsive behavior
+            window.addEventListener('resize', function() {
+              clearTimeout(window.resizeTimeout);
+              window.resizeTimeout = setTimeout(forceFlexLayout, 100);
+            });
+            
+            // Check if courses loaded after a delay, if not show fallback
+            setTimeout(function() {
+              if (listEl && listEl.children.length === 0) {
+                console.log('No courses loaded by discovery, checking fallback...');
+                var fallback = document.querySelector('.courses-fallback');
+                if (fallback) {
+                  console.log('Showing fallback courses');
+                  fallback.style.display = 'block';
+                  var fallbackList = fallback.querySelector('.mc1-courses-listing');
+                  if (fallbackList) {
+                    // Move fallback courses to main list
+                    while (fallbackList.children.length > 0) {
+                      listEl.appendChild(fallbackList.children[0]);
+                    }
+                    fallback.style.display = 'none';
+                    forceFlexLayout();
+                    setTimeout(makeCardsClickable, 200);
+                  }
+                }
+              }
+            }, 2000); // Wait 2 seconds for discovery to load
+            
+            // Course card click functionality - optimized for unified templates
+            function makeCardsClickable() {
+              // For legacy cards without <a> wrapper, add click functionality
+              const legacyCourseCards = document.querySelectorAll('.course, .course-card');
+              
+              legacyCourseCards.forEach(card => {
+                // Skip if already wrapped in a link (new template structure)
+                if (card.closest('a.course-card-link')) return;
+                
+                // Skip if already made clickable
+                if (card.dataset.clickable) return;
+                
+                // Find the course URL
+                let courseUrl = null;
+                
+                // Method 1: Look for learn-more link (legacy template)
+                const learnMoreLink = card.querySelector('a.learn-more');
+                if (learnMoreLink && learnMoreLink.href) {
+                  courseUrl = learnMoreLink.href;
+                }
+                
+                // Method 2: Try to construct URL from course ID
+                if (!courseUrl) {
+                  const courseId = card.getAttribute('id');
+                  if (courseId) {
+                    courseUrl = '/courses/' + courseId + '/about';
+                  }
+                }
+                
+                // Method 3: Look for any course link
+                if (!courseUrl) {
+                  const anyLink = card.querySelector('a[href*="/courses/"]');
+                  if (anyLink && anyLink.href.includes('/about')) {
+                    courseUrl = anyLink.href;
+                  }
+                }
+                
+                if (!courseUrl || courseUrl === '#') return;
+                
+                // Hide the learn-more button since entire card is clickable
+                const learnMore = card.querySelector('.learn-more');
+                if (learnMore) {
+                  learnMore.style.display = 'none';
+                }
+                
+                // Make the entire card clickable
+                card.style.cursor = 'pointer';
+                card.dataset.clickable = 'true';
+                
+                // Add click event
+                card.addEventListener('click', function(e) {
+                  // Don't interfere with existing links or buttons
+                  if (e.target.tagName === 'A' || 
+                      e.target.tagName === 'BUTTON' || 
+                      e.target.closest('a') || 
+                      e.target.closest('button')) {
+                    return;
+                  }
+                  
+                  e.preventDefault();
+                  e.stopPropagation();
+                  
+                  // Visual feedback
+                  card.style.transform = 'translateY(-2px) scale(0.98)';
+                  
+                  // Navigate with delay for feedback
+                  setTimeout(() => {
+                    window.location.href = courseUrl;
+                  }, 100);
+                });
+                
+                // Hover effects
+                card.addEventListener('mouseenter', function() {
+                  card.classList.add('course-hover');
+                });
+                
+                card.addEventListener('mouseleave', function() {
+                  card.classList.remove('course-hover');
+                  card.style.transform = '';
+                });
+                
+                // Keyboard accessibility
+                card.setAttribute('tabindex', '0');
+                card.setAttribute('role', 'button');
+                
+                const titleElement = card.querySelector('.course-title, .course-name, .course-card__name, .course-card__title');
+                const courseTitle = titleElement ? titleElement.textContent : 'Khóa học';
+                card.setAttribute('aria-label', 'Mở khóa học: ' + courseTitle);
+                
+                card.addEventListener('keydown', function(e) {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    card.click();
+                  }
+                });
+              });
+            }
+            
+            // Apply clickable functionality on DOM changes
+            if (window.MutationObserver && listEl) {
+              new MutationObserver(function() {
+                forceFlexLayout();
+                setTimeout(makeCardsClickable, 50);
+              }).observe(listEl, {childList: true, subtree: true});
+            }
+            
+            // Initial application
+            setTimeout(forceFlexLayout, 100);
+            setTimeout(forceFlexLayout, 500);
+            setTimeout(makeCardsClickable, 200);
+            setTimeout(makeCardsClickable, 600);
+          })();
+        </script>
+        % endif
+
+      </section>
+    </div>
+  </section>
+</main>

@@ -221,6 +221,15 @@ FEATURES["ENABLE_DISCUSSION_SERVICE"] = False
 FEATURES["PREVENT_CONCURRENT_LOGINS"] = False
 FEATURES["ENABLE_CORS_HEADERS"] = True
 
+# Disable email verification - auto-activate accounts
+FEATURES["REQUIRE_EMAIL_CONFIRMATION"] = False
+FEATURES["SKIP_EMAIL_VALIDATION"] = True
+
+# Enable comprehensive theming
+ENABLE_COMPREHENSIVE_THEMING = True
+COMPREHENSIVE_THEME_DIRS = ["/openedx/themes"]
+DEFAULT_SITE_THEME = "indigo"
+
 # CORS
 CORS_ALLOW_CREDENTIALS = True
 CORS_ORIGIN_ALLOW_ALL = False
@@ -429,3 +438,6 @@ CSRF_TRUSTED_ORIGINS.append("https://apps.binhdanhocvuso.hnue.edu.vn")
 
 
 MFE_CONFIG['INDIGO_ENABLE_DARK_TOGGLE'] = True
+
+# Disable email verification - auto-activate accounts
+ACCOUNT_EMAIL_VERIFICATION = 'none'

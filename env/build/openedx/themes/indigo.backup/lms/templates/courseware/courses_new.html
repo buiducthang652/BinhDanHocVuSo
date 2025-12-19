@@ -1,0 +1,801 @@
+<%page expression_filter="h"/>
+<%!
+  import json
+  from django.utils.translation import gettext as _
+  from openedx.core.djangolib.js_utils import js_escaped_string, dump_js_escaped_json
+%>
+<%inherit file="../main.html" />
+<%
+  course_discovery_enabled = settings.FEATURES.get('ENABLE_COURSE_DISCOVERY')
+%>
+<%namespace name='static' file='../static_content.html'/>
+
+<%block name="head_extra">
+  <!-- Optimized Vietnamese fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap&subset=vietnamese" rel="stylesheet"/>
+  
+  <style>
+    /* ===== CSS ISOLATION APPROACH ===== */
+    
+    /* Reset và isolation cho toàn bộ component */
+    .modern-course-catalog {
+      all: initial;
+      font-family: "Inter", system-ui, -apple-system, sans-serif !important;
+      box-sizing: border-box;
+      width: 100vw;
+      position: relative;
+      margin-left: -50vw;
+      margin-right: -50vw;
+      background: transparent;
+      padding: 20px;
+      min-height: auto;
+    }
+    
+    .modern-course-catalog *,
+    .modern-course-catalog *::before,
+    .modern-course-catalog *::after {
+      box-sizing: inherit;
+    }
+    
+    /* Base styling - isolated */
+    .modern-course-catalog .find-courses {
+      background: transparent;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+    }
+    
+    .modern-course-catalog .courses-main-wrapper {
+      padding: 0;
+      margin: 0;
+      width: 100%;
+    }
+    
+    .modern-course-catalog .courses-container { 
+      font-family: inherit;
+      max-width: 1600px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 0;
+    }
+    
+    /* Hide legacy elements */
+    .modern-course-catalog .page-head, 
+    .modern-course-catalog .page-title, 
+    .modern-course-catalog .hero, 
+    .modern-course-catalog .course-heading-area h1,
+    .modern-course-catalog .filters, 
+    .modern-course-catalog #filter-bar, 
+    .modern-course-catalog .search-facets { 
+      display: none !important; 
+    }
+    
+    /* ===== MODERN SEARCH ===== */
+    .modern-course-catalog .search-row { 
+      display: flex; 
+      gap: 16px; 
+      margin: 0 auto 60px; 
+      max-width: 900px;
+      align-items: stretch;
+      padding: 0 20px;
+    }
+    
+    .modern-course-catalog .search-input-wrap { 
+      position: relative; 
+      flex: 1;
+      max-width: 600px;
+    }
+    
+    .modern-course-catalog .search-input-wrap svg { 
+      position: absolute; 
+      left: 20px; 
+      top: 50%; 
+      transform: translateY(-50%); 
+      z-index: 2; 
+      width: 20px;
+      height: 20px;
+      opacity: 0.5;
+      color: #64748b;
+    }
+    
+    .modern-course-catalog .discovery-input { 
+      all: unset;
+      width: 100%; 
+      height: 56px; 
+      padding: 0 140px 0 52px; 
+      border: 0; 
+      border-radius: 28px; 
+      background: #ffffff; 
+      box-shadow: 
+        0 20px 25px -5px rgba(0, 0, 0, 0.1), 
+        0 10px 10px -5px rgba(0, 0, 0, 0.04),
+        inset 0 1px 0 rgba(255,255,255,0.7);
+      transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); 
+      font-size: 16px;
+      font-weight: 500;
+      color: #1e293b;
+      font-family: inherit;
+      box-sizing: border-box;
+      display: block;
+    }
+    
+    .modern-course-catalog .discovery-input:focus { 
+      outline: none; 
+      box-shadow: 
+        0 25px 50px -12px rgba(59, 130, 246, 0.25), 
+        0 0 0 1px rgba(59, 130, 246, 0.05),
+        inset 0 1px 0 rgba(255,255,255,1);
+      transform: translateY(-2px);
+    }
+    
+    .modern-course-catalog .discovery-input::placeholder {
+      color: #94a3b8;
+      font-weight: 400;
+    }
+    
+    .modern-course-catalog #clear-discovery { 
+      all: unset;
+      position: absolute; 
+      right: 120px; 
+      top: 50%; 
+      transform: translateY(-50%);
+      width: 24px; 
+      height: 24px; 
+      border-radius: 50%; 
+      border: 0; 
+      background: #f1f5f9;
+      color: #64748b; 
+      cursor: pointer; 
+      display: none; 
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 24px;
+      text-align: center;
+    }
+    
+    .modern-course-catalog #clear-discovery:hover { 
+      background: #e2e8f0; 
+      transform: translateY(-50%) scale(1.15);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .modern-course-catalog .discovery-submit { 
+      all: unset;
+      height: 56px; 
+      min-width: 120px; 
+      padding: 0 32px; 
+      border-radius: 28px; 
+      border: 0;
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); 
+      color: white; 
+      font-weight: 700; 
+      font-size: 16px;
+      cursor: pointer; 
+      transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+      box-shadow: 
+        0 20px 25px -5px rgba(59, 130, 246, 0.4), 
+        0 10px 10px -5px rgba(59, 130, 246, 0.1);
+      font-family: inherit;
+      letter-spacing: 0.025em;
+      display: inline-block;
+      text-align: center;
+      line-height: 56px;
+    }
+    
+    .modern-course-catalog .discovery-submit:hover { 
+      transform: translateY(-3px); 
+      box-shadow: 
+        0 25px 50px -12px rgba(59, 130, 246, 0.5), 
+        0 20px 25px -5px rgba(59, 130, 246, 0.2);
+      background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    }
+    
+    .modern-course-catalog .discovery-submit:active {
+      transform: translateY(-1px);
+    }
+    
+    /* ===== ISOLATED COURSE GRID ===== */
+    .modern-course-catalog .course-holder,
+    .modern-course-catalog .courses { 
+      all: unset;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      display: block;
+    }
+    
+    .modern-course-catalog .courses-listing { 
+      all: unset;
+      list-style: none; 
+      margin: 0; 
+      padding: 0;
+      display: grid; 
+      gap: 24px; 
+      grid-template-columns: repeat(1, 1fr);
+      width: 100%;
+    }
+    
+    /* Responsive grid */
+    @media (min-width: 640px) { 
+      .modern-course-catalog .courses-listing { 
+        grid-template-columns: repeat(2, 1fr); 
+        gap: 20px;
+      } 
+    }
+    
+    @media (min-width: 900px) { 
+      .modern-course-catalog .courses-listing { 
+        grid-template-columns: repeat(3, 1fr); 
+        gap: 24px;
+      } 
+    }
+    
+    @media (min-width: 1200px) { 
+      .modern-course-catalog .courses-listing { 
+        grid-template-columns: repeat(4, 1fr); 
+        gap: 28px;
+      } 
+    }
+    
+    @media (min-width: 1600px) { 
+      .modern-course-catalog .courses-listing { 
+        grid-template-columns: repeat(4, 1fr); 
+        gap: 32px;
+      } 
+    }
+    
+    .modern-course-catalog .courses-listing-item { 
+      all: unset;
+      width: auto; 
+      display: block; 
+      height: 100%; 
+    }
+    
+    /* ===== PREMIUM COURSE CARDS ===== */
+    .modern-course-catalog .course-card, 
+    .modern-course-catalog .courses-listing .course { 
+      all: unset;
+      display: flex; 
+      flex-direction: column; 
+      height: 100%; 
+      background: #ffffff;
+      border: 1px solid rgba(226,232,240,0.8); 
+      border-radius: 24px; 
+      overflow: hidden;
+      box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.25),
+        0 0 0 1px rgba(255,255,255,0.8);
+      transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1); 
+      backdrop-filter: blur(20px);
+      position: relative;
+      box-sizing: border-box;
+    }
+    
+    .modern-course-catalog .course-card::before, 
+    .modern-course-catalog .courses-listing .course::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+      border-radius: 24px;
+      pointer-events: none;
+    }
+    
+    .modern-course-catalog .course-card:hover, 
+    .modern-course-catalog .courses-listing .course:hover { 
+      transform: translateY(-12px) scale(1.03); 
+      box-shadow: 
+        0 35px 70px -12px rgba(0, 0, 0, 0.35),
+        0 0 0 1px rgba(59,130,246,0.1);
+      border-color: rgba(59,130,246,0.2);
+    }
+    
+    /* Course image */
+    .modern-course-catalog .course-card__media, 
+    .modern-course-catalog .course .course-image { 
+      position: relative; 
+      width: 100%; 
+      aspect-ratio: 16/9; 
+      background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); 
+      overflow: hidden; 
+    }
+    
+    .modern-course-catalog .course-card__img, 
+    .modern-course-catalog .course .course-image img { 
+      width: 100%; 
+      height: 100%; 
+      object-fit: cover; 
+      display: block; 
+      transition: transform 0.8s cubic-bezier(0.25, 0.8, 0.25, 1); 
+    }
+    
+    .modern-course-catalog .course-card:hover .course-card__img, 
+    .modern-course-catalog .course:hover .course-image img { 
+      transform: scale(1.1) rotate(1deg); 
+    }
+    
+    .modern-course-catalog .course .course-image .cover-image { 
+      height: 100%; 
+    }
+    
+    .modern-course-catalog .course .course-image .cover-image::before { 
+      display: none; 
+    }
+    
+    /* Gradient overlay */
+    .modern-course-catalog .course-card__media::after, 
+    .modern-course-catalog .course .course-image::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        180deg, 
+        rgba(15,23,42,0) 0%, 
+        rgba(15,23,42,0.03) 50%,
+        rgba(15,23,42,0.1) 100%
+      );
+      pointer-events: none;
+    }
+    
+    /* Premium badge */
+    .modern-course-catalog .course-card__badge, 
+    .modern-course-catalog .course .course-organization[style*="position"] {
+      position: absolute; 
+      left: 20px; 
+      top: 20px; 
+      padding: 8px 16px; 
+      font-size: 12px; 
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: #1e40af; 
+      background: rgba(255,255,255,0.95); 
+      border: 1px solid rgba(59,130,246,0.1);
+      border-radius: 20px; 
+      backdrop-filter: blur(20px); 
+      z-index: 3;
+      box-shadow: 
+        0 10px 15px -3px rgba(59,130,246,0.1),
+        0 4px 6px -2px rgba(59,130,246,0.05);
+      font-family: inherit;
+    }
+    
+    /* Content area */
+    .modern-course-catalog .course-card__body, 
+    .modern-course-catalog .course .course-info { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 16px; 
+      padding: 32px;
+      background: transparent; 
+      border: 0; 
+      flex: 1;
+    }
+    
+    /* Typography */
+    .modern-course-catalog .course-card__name, 
+    .modern-course-catalog .course .course-title { 
+      font-size: 22px; 
+      font-weight: 800; 
+      color: #0f172a;
+      line-height: 1.3; 
+      margin: 0; 
+      padding: 0; 
+      height: auto;
+      display: -webkit-box; 
+      -webkit-line-clamp: 2; 
+      line-clamp: 2;
+      -webkit-box-orient: vertical; 
+      overflow: hidden; 
+      white-space: unset;
+      letter-spacing: -0.05em;
+      font-family: inherit;
+    }
+    
+    .modern-course-catalog .course .course-organization:not([style*="position"]) {
+      color: #64748b; 
+      font-size: 14px;
+      font-weight: 600;
+      height: auto; 
+      padding: 0; 
+      margin: 0; 
+      display: block; 
+      overflow: hidden; 
+      white-space: nowrap; 
+      text-overflow: ellipsis;
+      letter-spacing: 0.05em;
+      font-family: inherit;
+      position: static;
+    }
+    
+    /* Meta section */
+    .modern-course-catalog .course-card__meta, 
+    .modern-course-catalog .course .course-date {
+      display: flex; 
+      align-items: center; 
+      gap: 12px; 
+      color: #64748b; 
+      font-size: 14px;
+      font-weight: 500;
+      margin: 12px 0 20px; 
+      padding: 12px 16px; 
+      border: 0; 
+      background: rgba(248,250,252,0.8);
+      border-radius: 16px;
+      font-family: inherit;
+    }
+    
+    .modern-course-catalog .course-card__meta svg, 
+    .modern-course-catalog .course .course-date svg { 
+      flex-shrink: 0; 
+      margin: 0; 
+      vertical-align: baseline; 
+      width: 18px;
+      height: 18px;
+      opacity: 0.7;
+    }
+    
+    /* CTA button */
+    .modern-course-catalog .course-card__cta, 
+    .modern-course-catalog .course .learn-more {
+      all: unset;
+      display: inline-flex; 
+      align-items: center; 
+      justify-content: center; 
+      height: 52px;
+      width: 100%; 
+      padding: 0 24px; 
+      margin: auto 0 0;
+      border-radius: 26px; 
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); 
+      color: white;
+      font-weight: 700; 
+      font-size: 16px; 
+      text-decoration: none;
+      border: 0; 
+      transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); 
+      text-align: center;
+      box-shadow: 
+        0 20px 25px -5px rgba(59, 130, 246, 0.4), 
+        0 10px 10px -5px rgba(59, 130, 246, 0.1);
+      letter-spacing: 0.025em;
+      font-family: inherit;
+      cursor: pointer;
+      box-sizing: border-box;
+    }
+    
+    .modern-course-catalog .course-card__cta:hover, 
+    .modern-course-catalog .course .learn-more:hover {
+      background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); 
+      transform: translateY(-3px); 
+      color: white;
+      text-decoration: none; 
+      opacity: 1;
+      box-shadow: 
+        0 25px 50px -12px rgba(59, 130, 246, 0.5), 
+        0 20px 25px -5px rgba(59, 130, 246, 0.2);
+    }
+    
+    .modern-course-catalog .course .learn-more::before, 
+    .modern-course-catalog .course .learn-more::after { 
+      display: none; 
+      content: none; 
+    }
+    
+    /* Search message */
+    .modern-course-catalog #discovery-message {
+      text-align: center;
+      color: #64748b;
+      margin-top: 32px;
+      font-size: 15px;
+      font-weight: 500;
+      font-family: inherit;
+    }
+    
+    /* Mobile optimizations */
+    @media (max-width: 768px) {
+      .modern-course-catalog {
+        padding: 16px;
+      }
+      
+      .modern-course-catalog .search-row { 
+        flex-direction: column; 
+        gap: 20px; 
+        margin: 0 0 50px;
+        max-width: none;
+        padding: 0;
+      }
+      
+      .modern-course-catalog .discovery-input { 
+        padding-right: 60px; 
+        height: 52px;
+        font-size: 15px;
+      }
+      
+      .modern-course-catalog #clear-discovery { 
+        right: 20px; 
+        width: 20px;
+        height: 20px;
+        line-height: 20px;
+      }
+      
+      .modern-course-catalog .discovery-submit { 
+        width: 100%; 
+        height: 52px;
+        font-size: 15px;
+        line-height: 52px;
+      }
+      
+      .modern-course-catalog .course-card__body, 
+      .modern-course-catalog .course .course-info { 
+        padding: 24px;
+        gap: 12px; 
+      }
+      
+      .modern-course-catalog .course-card__name, 
+      .modern-course-catalog .course .course-title { 
+        font-size: 18px; 
+      }
+      
+      .modern-course-catalog .course-card__cta, 
+      .modern-course-catalog .course .learn-more {
+        height: 48px;
+        font-size: 15px;
+      }
+      
+      .modern-course-catalog .course-card__badge, 
+      .modern-course-catalog .course .course-organization[style*="position"] {
+        left: 16px; 
+        top: 16px; 
+        padding: 6px 12px; 
+        font-size: 10px; 
+      }
+    }
+    
+    @media (max-width: 640px) {
+      .modern-course-catalog {
+        padding: 12px;
+      }
+      
+      .modern-course-catalog .search-row { 
+        margin: 0 0 40px;
+      }
+      
+      .modern-course-catalog .discovery-input { 
+        height: 48px;
+        font-size: 14px;
+        padding: 0 50px 0 44px;
+      }
+      
+      .modern-course-catalog .discovery-submit { 
+        height: 48px;
+        font-size: 14px;
+        line-height: 48px;
+      }
+      
+      .modern-course-catalog .course-card__body, 
+      .modern-course-catalog .course .course-info { 
+        padding: 20px;
+      }
+      
+      .modern-course-catalog .course-card__name, 
+      .modern-course-catalog .course .course-title { 
+        font-size: 16px; 
+      }
+    }
+    
+    /* ===== DARK THEME ===== */
+    body.indigo-dark-theme .modern-course-catalog .discovery-input { 
+      background: rgba(30,41,59,0.9); 
+      color: #f1f5f9; 
+      box-shadow: 
+        0 20px 25px -5px rgba(0, 0, 0, 0.5), 
+        0 10px 10px -5px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+    
+    body.indigo-dark-theme .modern-course-catalog .discovery-input:focus { 
+      box-shadow: 
+        0 25px 50px -12px rgba(59, 130, 246, 0.4), 
+        0 0 0 1px rgba(59, 130, 246, 0.1),
+        inset 0 1px 0 rgba(255,255,255,0.2);
+    }
+    
+    body.indigo-dark-theme .modern-course-catalog .discovery-input::placeholder {
+      color: #94a3b8;
+    }
+    
+    body.indigo-dark-theme .modern-course-catalog #clear-discovery { 
+      background: #334155; 
+      color: #94a3b8; 
+    }
+    
+    body.indigo-dark-theme .modern-course-catalog #clear-discovery:hover { 
+      background: #475569; 
+    }
+    
+    body.indigo-dark-theme .modern-course-catalog .course-card, 
+    body.indigo-dark-theme .modern-course-catalog .courses-listing .course { 
+      background: linear-gradient(145deg, #1e293b 0%, #334155 100%); 
+      border-color: rgba(71,85,105,0.6); 
+      box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.6),
+        0 0 0 1px rgba(255,255,255,0.05);
+    }
+    
+    body.indigo-dark-theme .modern-course-catalog .course-card::before, 
+    body.indigo-dark-theme .modern-course-catalog .courses-listing .course::before {
+      background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+    }
+    
+    body.indigo-dark-theme .modern-course-catalog .course-card:hover, 
+    body.indigo-dark-theme .modern-course-catalog .courses-listing .course:hover {
+      border-color: rgba(59,130,246,0.4);
+      box-shadow: 
+        0 35px 70px -12px rgba(0, 0, 0, 0.7),
+        0 0 0 1px rgba(59,130,246,0.2);
+    }
+    
+    body.indigo-dark-theme .modern-course-catalog .course-card__name, 
+    body.indigo-dark-theme .modern-course-catalog .course .course-title { 
+      color: #f1f5f9; 
+    }
+    
+    body.indigo-dark-theme .modern-course-catalog .course .course-organization:not([style*="position"]) { 
+      color: #94a3b8; 
+    }
+    
+    body.indigo-dark-theme .modern-course-catalog .course-card__meta, 
+    body.indigo-dark-theme .modern-course-catalog .course .course-date { 
+      color: #94a3b8; 
+      background: rgba(15,23,42,0.6);
+    }
+    
+    body.indigo-dark-theme .modern-course-catalog .course-card__badge, 
+    body.indigo-dark-theme .modern-course-catalog .course .course-organization[style*="position"] {
+      color: #60a5fa; 
+      background: rgba(30,41,59,0.95); 
+      border-color: rgba(96,165,250,0.3);
+      box-shadow: 
+        0 10px 15px -3px rgba(96,165,250,0.2),
+        0 4px 6px -2px rgba(96,165,250,0.1);
+    }
+    
+    body.indigo-dark-theme .modern-course-catalog #discovery-message {
+      color: #94a3b8;
+    }
+    
+    /* Performance optimizations */
+    @media (prefers-reduced-motion: reduce) {
+      .modern-course-catalog * {
+        transition: none;
+        transform: none;
+        animation: none;
+      }
+    }
+  </style>
+</%block>
+
+<%block name="js_extra">
+  <script type="text/javascript" src="${static.url('common/js/vendor/bootstrap.bundle.js')}"></script>
+</%block>
+
+% if course_discovery_enabled:
+<%block name="header_extras">
+  % for template_name in ["course_card", "filter_bar", "filter", "facet", "facet_option"]:
+  <script type="text/template" id="${template_name}-tpl">
+    <%static:include path="discovery/${template_name}.underscore" />
+  </script>
+  % endfor
+  <%static:require_module module_name="js/discovery/discovery_factory" class_name="DiscoveryFactory">
+    DiscoveryFactory(
+      ${course_discovery_meanings | n, dump_js_escaped_json},
+      getParameterByName('search_query'),
+      "${user_language | n, js_escaped_string}",
+      "${user_timezone | n, js_escaped_string}",
+      ${set_default_filter | n, dump_js_escaped_json}
+    );
+  </%static:require_module>
+</%block>
+% endif
+
+<%block name="pagetitle">${_("Các khóa học")}</%block>
+
+<main id="main" aria-label="${_('Nội dung')}" tabindex="-1">
+  <div class="modern-course-catalog">
+    <section class="find-courses">
+      <!-- Wrapper đảm bảo không bị che bởi fixed header -->
+      <div class="courses-main-wrapper">
+        <section class="courses-container">
+
+        % if course_discovery_enabled:
+        <!-- SEARCH -->
+        <div class="search-row">
+          <div class="search-input-wrap">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path fill-rule="evenodd" clip-rule="evenodd" d="M8 4C5.79086 4 4 5.79086 4 8C4 10.2091 5.79086 12 8 12C10.2091 12 12 10.2091 12 8C12 5.79086 10.2091 4 8 4ZM2 8C2 4.68629 4.68629 2 8 2C11.3137 2 14 4.68629 14 8C14 9.29583 13.5892 10.4957 12.8907 11.4765L17.7071 16.2929C18.0976 16.6834 18.0976 17.3166 17.7071 17.7071C17.3166 18.0976 16.6834 18.0976 16.2929 17.7071L11.4765 12.8907C10.4957 13.5892 9.29583 14 8 14C4.68629 14 2 11.3137 2 8Z" fill="#9CA3AF"/>
+            </svg>
+
+            <div id="discovery-form" role="search" aria-label="course" class="wrapper-search-context" data-has-discovery="true">
+              <form id="edx-discovery-search-form" class="wrapper-search-input" novalidate>
+                <label class="sr" for="discovery-input">${_('Tìm kiếm khóa học')}</label>
+                <input id="discovery-input" class="discovery-input" name="search_query" type="text"
+                       placeholder="${_('Khám phá khóa học')}" autocomplete="off" aria-describedby="discovery-message"/>
+                <button id="clear-discovery" type="button" title="${_('Xoá từ khóa')}" aria-label="${_('Xoá từ khóa')}">×</button>
+                <div class="button-holder">
+                  <button type="submit" class="discovery-submit" title="${_('Tìm kiếm')}">${_('Tìm kiếm')}</button>
+                </div>
+              </form>
+              <div id="discovery-message" class="search-status-label" role="status" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- filter containers (ẩn bằng CSS để JS không lỗi) -->
+        <div id="filter-bar" class="filters hide-phone is-collapsed" aria-hidden="true"></div>
+        <aside class="search-facets" aria-hidden="true">
+          <section class="search-facets-lists" aria-hidden="true"></section>
+        </aside>
+        % endif
+
+        <!-- COURSE GRID -->
+        % if course_discovery_enabled:
+          <div class="course-holder courses" role="region" aria-label="${_('Danh sách khóa học')}">
+            <ul class="courses-listing courses-list"></ul>
+          </div>
+        % else:
+          <div class="course-holder courses no-course-discovery" role="region" aria-label="${_('Danh sách khóa học')}">
+            <ul class="courses-listing courses-list">
+              % for course in courses:
+              <li class="courses-listing-item">
+                <%include file="../course.html" args="course=course" />
+              </li>
+              % endfor
+            </ul>
+          </div>
+        % endif
+
+        % if course_discovery_enabled:
+        <!-- JS: không reload; dọn danh sách khi "không có kết quả" -->
+        <script>
+          (function () {
+            function getParam(name){
+              var m=new RegExp('[?&]'+name+'=([^&]*)').exec(window.location.search);
+              return m&&decodeURIComponent(m[1].replace(/\+/g,' '))||'';
+            }
+            var input    = document.getElementById('discovery-input');
+            var form     = document.getElementById('edx-discovery-search-form');
+            var clearBtn = document.getElementById('clear-discovery');
+            var msgEl    = document.getElementById('discovery-message');
+            var listEl   = document.querySelector('.courses-listing');
+
+            // init from URL
+            var q = getParam('search_query'); if(q){ input.value = q; clearBtn.style.display='inline-block'; }
+            input.addEventListener('input', function(){ clearBtn.style.display = input.value.length ? 'inline-block' : 'none'; });
+            clearBtn.addEventListener('click', function(e){ e.preventDefault(); input.value=''; this.style.display='none'; input.focus(); });
+            form.addEventListener('submit', function(){ /* để Discovery xử lý AJAX */ });
+
+            // clear list when "no results"
+            function clearIfNoResults() {
+              if (!msgEl || !listEl) return;
+              var t = (msgEl.textContent || '').toLowerCase();
+              var isNo = t.indexOf('không tìm thấy') > -1 || t.indexOf('không thể tìm thấy') > -1 ||
+                         t.indexOf('no courses found') > -1 || t.indexOf('no results') > -1;
+              if (isNo) { listEl.innerHTML=''; }
+            }
+            if (window.MutationObserver && msgEl) {
+              new MutationObserver(clearIfNoResults).observe(msgEl, {childList:true,subtree:true,characterData:true});
+            }
+            clearIfNoResults();
+          })();
+        </script>
+        % endif
+
+        </section>
+      </div>
+    </section>
+  </div>
+</main>

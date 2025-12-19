@@ -1,0 +1,633 @@
+<%page expression_filter="h"/>
+<%namespace name='static' file='../static_content.html'/>
+<%!
+from django.utils.translation import gettext as _
+from django.urls import reverse
+from openedx.core.djangolib.js_utils import js_escaped_string, dump_js_escaped_json
+%>
+<%inherit file="../main.html" />
+
+<%def name="online_help_token()"><% return "courseware" %></%def>
+
+<%block name="head_extra">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap&subset=vietnamese" rel="stylesheet"/>
+  
+  <style>
+    /* Modern Courseware Learning Interface */
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+      background: linear-gradient(135deg, #6A79E4 0%, #849BF1 25%, #B5C7FA 50%, #96D5F6 75%, #BBE7F8 100%) !important;
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Ultra-high specificity header synchronization */
+    html body div.wrapper-header header.global div.global-header nav.nav-links div.main div.btn-holder a.btn,
+    html body .global-header .btn-holder .btn,
+    html body .global-header .nav-links .btn {
+      all: unset !important;
+      display: inline-block !important;
+      background: #6A79E4 !important;
+      color: white !important;
+      border: none !important;
+      padding: 8px 20px !important;
+      border-radius: 8px !important;
+      font-weight: 600 !important;
+      text-decoration: none !important;
+      transition: all 0.3s ease !important;
+      margin-left: 8px !important;
+      font-family: "Inter", sans-serif !important;
+      font-size: 14px !important;
+      cursor: pointer !important;
+    }
+
+    html body div.wrapper-header header.global div.global-header nav.nav-links div.main div.btn-holder a.btn:hover,
+    html body .global-header .btn-holder .btn:hover,
+    html body .global-header .nav-links .btn:hover {
+      background: #849BF1 !important;
+      color: white !important;
+      transform: translateY(-1px) !important;
+      box-shadow: 0 4px 12px rgba(106, 121, 228, 0.3) !important;
+    }
+
+    /* Navigation Links */
+    html body div.wrapper-header header.global div.global-header nav.nav-links div.main div.nav-item.nav-tab a,
+    html body .global-header .nav-links .main .nav-tab a,
+    html body .global-header .nav-links .nav-item a:not(.btn) {
+      color: #1e293b !important;
+      font-weight: 500 !important;
+      text-decoration: none !important;
+    }
+
+    /* Main Courseware Layout */
+    .courseware-learning-main {
+      max-width: 1600px;
+      margin: 40px auto;
+      padding: 0 24px;
+      display: grid;
+      grid-template-columns: 280px 1fr 300px;
+      gap: 24px;
+      min-height: calc(100vh - 200px);
+    }
+
+    /* Course Navigation Sidebar */
+    .course-navigation-sidebar {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 24px;
+      height: fit-content;
+      box-shadow: 
+        0 20px 40px -12px rgba(0, 0, 0, 0.2),
+        0 0 0 1px rgba(255, 255, 255, 0.5);
+    }
+
+    .course-navigation-sidebar h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 16px;
+    }
+
+    .course-sequence-nav {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .sequence-nav-item {
+      margin-bottom: 8px;
+    }
+
+    .sequence-nav-link {
+      display: block;
+      padding: 10px 12px;
+      background: rgba(106, 121, 228, 0.05);
+      border-radius: 10px;
+      color: #374151;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 14px;
+      transition: all 0.3s ease;
+    }
+
+    .sequence-nav-link:hover {
+      background: rgba(106, 121, 228, 0.1);
+      color: #6A79E4;
+      transform: translateX(2px);
+    }
+
+    .sequence-nav-link.active {
+      background: #6A79E4;
+      color: white;
+    }
+
+    /* Main Learning Content */
+    .learning-content-main {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.25),
+        0 0 0 1px rgba(255, 255, 255, 0.5);
+    }
+
+    /* Learning Header */
+    .learning-header {
+      padding: 24px 32px;
+      background: linear-gradient(135deg, #6A79E4, #849BF1);
+      color: white;
+    }
+
+    .learning-header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin: 0 0 8px;
+    }
+
+    .learning-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .breadcrumb-separator {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Learning Unit Content */
+    .learning-unit-content {
+      padding: 32px;
+    }
+
+    .unit-title {
+      font-size: 28px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 20px;
+    }
+
+    .unit-description {
+      font-size: 16px;
+      line-height: 1.6;
+      color: #374151;
+      margin-bottom: 32px;
+    }
+
+    /* Video Player Area */
+    .video-player-container {
+      background: #000;
+      border-radius: 16px;
+      margin-bottom: 32px;
+      overflow: hidden;
+      position: relative;
+      aspect-ratio: 16/9;
+    }
+
+    .video-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      background: linear-gradient(135deg, #1e293b, #334155);
+      color: white;
+    }
+
+    .play-button {
+      width: 80px;
+      height: 80px;
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .play-button:hover {
+      transform: scale(1.1);
+      background: white;
+    }
+
+    .play-button svg {
+      width: 32px;
+      height: 32px;
+      color: #1e293b;
+      margin-left: 4px;
+    }
+
+    /* Reading Content */
+    .reading-content {
+      background: rgba(248, 250, 252, 0.8);
+      border-radius: 16px;
+      padding: 32px;
+      margin-bottom: 32px;
+    }
+
+    .reading-content h2 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 16px;
+    }
+
+    .reading-content h3 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #374151;
+      margin: 24px 0 12px;
+    }
+
+    .reading-content p {
+      font-size: 16px;
+      line-height: 1.7;
+      color: #374151;
+      margin-bottom: 16px;
+    }
+
+    .reading-content ul,
+    .reading-content ol {
+      padding-left: 24px;
+      margin-bottom: 16px;
+    }
+
+    .reading-content li {
+      margin-bottom: 8px;
+      line-height: 1.6;
+    }
+
+    /* Unit Navigation */
+    .unit-navigation {
+      display: flex;
+      justify-content: space-between;
+      padding: 24px 32px;
+      border-top: 1px solid rgba(226, 232, 240, 0.8);
+      background: rgba(248, 250, 252, 0.8);
+    }
+
+    .nav-btn {
+      padding: 12px 24px;
+      background: #6A79E4;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-btn:hover {
+      background: #849BF1;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(106, 121, 228, 0.3);
+    }
+
+    .nav-btn.secondary {
+      background: rgba(106, 121, 228, 0.1);
+      color: #6A79E4;
+    }
+
+    .nav-btn.secondary:hover {
+      background: rgba(106, 121, 228, 0.2);
+    }
+
+    /* Course Tools Sidebar */
+    .course-tools-sidebar {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 24px;
+      height: fit-content;
+      box-shadow: 
+        0 20px 40px -12px rgba(0, 0, 0, 0.2),
+        0 0 0 1px rgba(255, 255, 255, 0.5);
+    }
+
+    .course-tools-sidebar h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 16px;
+    }
+
+    .tool-item {
+      padding: 12px;
+      background: rgba(106, 121, 228, 0.05);
+      border-radius: 12px;
+      margin-bottom: 12px;
+      transition: all 0.3s ease;
+    }
+
+    .tool-item:hover {
+      background: rgba(106, 121, 228, 0.1);
+      transform: translateY(-1px);
+    }
+
+    .tool-link {
+      color: #374151;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tool-link:hover {
+      color: #6A79E4;
+    }
+
+    /* Progress Bar */
+    .progress-container {
+      margin-bottom: 20px;
+    }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #374151;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(226, 232, 240, 0.8);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #6A79E4, #849BF1);
+      width: 35%;
+      transition: width 0.3s ease;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1200px) {
+      .courseware-learning-main {
+        grid-template-columns: 240px 1fr 260px;
+        gap: 20px;
+      }
+    }
+
+    @media (max-width: 992px) {
+      .courseware-learning-main {
+        grid-template-columns: 1fr;
+        gap: 20px;
+        margin: 20px 16px;
+      }
+
+      .course-navigation-sidebar,
+      .course-tools-sidebar {
+        order: 2;
+      }
+
+      .learning-unit-content {
+        padding: 24px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .learning-header {
+        padding: 20px 24px;
+      }
+
+      .learning-header h1 {
+        font-size: 20px;
+      }
+
+      .unit-title {
+        font-size: 24px;
+      }
+
+      .reading-content {
+        padding: 24px;
+      }
+
+      .unit-navigation {
+        flex-direction: column;
+        gap: 12px;
+        padding: 20px 24px;
+      }
+    }
+
+    /* Hide original courseware content */
+    .courseware-content,
+    .course-wrapper,
+    .courseware-wrapper,
+    .window-wrap,
+    .course-content,
+    .xblock-student_view {
+      display: none !important;
+    }
+  </style>
+</%block>
+
+<%block name="pagetitle">${course.display_name_with_default if course else _("Học tập")}</%block>
+
+<main id="main" aria-label="${_('Nội dung học tập')}" tabindex="-1">
+  <div class="courseware-learning-main">
+    <!-- Course Navigation Sidebar -->
+    <aside class="course-navigation-sidebar">
+      <h3>${_("Nội dung")}</h3>
+      <div class="progress-container">
+        <div class="progress-label">
+          <span>${_("Tiến độ")}</span>
+          <span>35%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill"></div>
+        </div>
+      </div>
+      
+      <nav class="course-sequence-nav" role="navigation" aria-label="${_('Điều hướng bài học')}">
+        <ul class="course-sequence-nav">
+          <li class="sequence-nav-item">
+            <a href="#" class="sequence-nav-link">${_("Giới thiệu")}</a>
+          </li>
+          <li class="sequence-nav-item">
+            <a href="#" class="sequence-nav-link active">${_("Bài 1: Khái niệm cơ bản")}</a>
+          </li>
+          <li class="sequence-nav-item">
+            <a href="#" class="sequence-nav-link">${_("Bài 2: Thực hành")}</a>
+          </li>
+          <li class="sequence-nav-item">
+            <a href="#" class="sequence-nav-link">${_("Quiz 1")}</a>
+          </li>
+          <li class="sequence-nav-item">
+            <a href="#" class="sequence-nav-link">${_("Bài 3: Ứng dụng")}</a>
+          </li>
+        </ul>
+      </nav>
+    </aside>
+
+    <!-- Main Learning Content -->
+    <main class="learning-content-main">
+      <!-- Learning Header -->
+      <header class="learning-header">
+        % if course:
+          <h1>${course.display_name_with_default}</h1>
+        % else:
+          <h1>${_("Khóa học")}</h1>
+        % endif
+        <nav class="learning-breadcrumb" aria-label="${_('Breadcrumb')}">
+          <a href="#" style="color: rgba(255, 255, 255, 0.8);">${_("Trang chủ")}</a>
+          <span class="breadcrumb-separator">›</span>
+          <a href="#" style="color: rgba(255, 255, 255, 0.8);">${_("Chương 1")}</a>
+          <span class="breadcrumb-separator">›</span>
+          <span>${_("Khái niệm cơ bản")}</span>
+        </nav>
+      </header>
+
+      <!-- Learning Unit Content -->
+      <div class="learning-unit-content">
+        <h2 class="unit-title">${_("Bài 1: Khái niệm cơ bản")}</h2>
+        <p class="unit-description">${_("Trong bài học này, chúng ta sẽ tìm hiểu các khái niệm cơ bản và nền tảng quan trọng cho toàn bộ khóa học.")}</p>
+
+        <!-- Video Player -->
+        <div class="video-player-container">
+          <div class="video-placeholder">
+            <div class="play-button">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reading Content -->
+        <div class="reading-content">
+          <h2>${_("Nội dung bài học")}</h2>
+          
+          <h3>${_("1. Giới thiệu")}</h3>
+          <p>${_("Chào mừng bạn đến với bài học đầu tiên. Trong phần này, chúng ta sẽ khám phá những khái niệm quan trọng làm nền tảng cho toàn bộ khóa học.")}</p>
+          
+          <h3>${_("2. Mục tiêu học tập")}</h3>
+          <p>${_("Sau khi hoàn thành bài học này, bạn sẽ có thể:")}</p>
+          <ul>
+            <li>${_("Hiểu được các khái niệm cơ bản")}</li>
+            <li>${_("Áp dụng kiến thức vào thực tế")}</li>
+            <li>${_("Phân tích các tình huống cụ thể")}</li>
+            <li>${_("Chuẩn bị cho các bài học tiếp theo")}</li>
+          </ul>
+          
+          <h3>${_("3. Nội dung chi tiết")}</h3>
+          <p>${_("Bài học bao gồm các phần chính sau đây...")}</p>
+          
+          <ol>
+            <li>${_("Lý thuyết cơ bản và định nghĩa")}</li>
+            <li>${_("Ví dụ minh họa cụ thể")}</li>
+            <li>${_("Bài tập thực hành")}</li>
+            <li>${_("Đánh giá và phản hồi")}</li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- Unit Navigation -->
+      <nav class="unit-navigation" role="navigation" aria-label="${_('Điều hướng bài học')}">
+        <a href="#" class="nav-btn secondary">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
+          </svg>
+          ${_("Bài trước")}
+        </a>
+        <a href="#" class="nav-btn">
+          ${_("Bài tiếp theo")}
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+          </svg>
+        </a>
+      </nav>
+    </main>
+
+    <!-- Course Tools Sidebar -->
+    <aside class="course-tools-sidebar">
+      <h3>${_("Công cụ")}</h3>
+      
+      <div class="tool-item">
+        <a href="#" class="tool-link">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+          </svg>
+          ${_("Trợ giúp")}
+        </a>
+      </div>
+      
+      <div class="tool-item">
+        <a href="#" class="tool-link">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2zM7 8H5v2h2V8zm2 0h2v2H9V8zm6 0h-2v2h2V8z" clip-rule="evenodd"/>
+          </svg>
+          ${_("Thảo luận")}
+        </a>
+      </div>
+      
+      <div class="tool-item">
+        <a href="#" class="tool-link">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          ${_("Tiến độ")}
+        </a>
+      </div>
+      
+      <div class="tool-item">
+        <a href="#" class="tool-link">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"/>
+          </svg>
+          ${_("Ghi chú")}
+        </a>
+      </div>
+      
+      <div class="tool-item">
+        <a href="#" class="tool-link">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+          </svg>
+          ${_("Tài liệu")}
+        </a>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<!-- Override existing courseware content -->
+<style>
+  /* Hide original courseware elements with highest priority */
+  .window-wrap,
+  .courseware-content,
+  .course-wrapper,
+  .courseware-wrapper,
+  .course-content-wrapper,
+  .course-index,
+  .xblock-student_view,
+  .courseware-sequence {
+    display: none !important;
+    visibility: hidden !important;
+  }
+</style>
+
+<%static:require_module_async module_name="js/courseware" class_name="CoursewareMain">
+    // Custom courseware JavaScript
+</%static:require_module_async>

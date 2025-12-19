@@ -3,7 +3,7 @@
 		"meilisearch.binhdanhocvuso.hnue.edu.vn"
 	],
 	"issuer_data": {
-		"url": "https://acme-v02.api.letsencrypt.org/acme/cert/05ecb6b3aa535b85eb6528db02a2a76861cc",
+		"url": "https://acme-v02.api.letsencrypt.org/acme/cert/052f2ef7eefad3d6ccae63e7c593168c8c6c",
 		"ca": "https://acme-v02.api.letsencrypt.org/directory"
 	}
 }

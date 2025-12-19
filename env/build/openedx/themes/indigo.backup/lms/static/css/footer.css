@@ -1,0 +1,196 @@
+/* Custom footer styles for HNUE theme */
+.wrapper-footer {
+    background-image: url('/static/images/bg_footer.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: relative;
+}
+
+.wrapper-footer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1;
+}
+
+.wrapper-footer * {
+    position: relative;
+    z-index: 2;
+    color: white !important;
+}
+
+.wrapper-footer .footer-content {
+    padding: 40px 0;
+}
+
+.wrapper-footer .university-info {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.wrapper-footer .university-info h3 {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #fff !important;
+}
+
+.wrapper-footer .university-info p {
+    font-size: 16px;
+    line-height: 1.6;
+    margin-bottom: 5px;
+    color: #fff !important;
+}
+
+.wrapper-footer .contact-info {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    margin-top: 30px;
+}
+
+.wrapper-footer .contact-item {
+    flex: 1;
+    min-width: 250px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.wrapper-footer .contact-item h4 {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #fff !important;
+}
+
+.wrapper-footer .contact-item p {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #fff !important;
+}
+
+.wrapper-footer a {
+    color: #fff !important;
+    text-decoration: none;
+}
+
+.wrapper-footer a:hover {
+    color: #ccc !important;
+    text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+    .wrapper-footer .contact-info {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .wrapper-footer .contact-item {
+        min-width: 100%;
+        margin-bottom: 15px;
+    }
+
+    .wrapper-footer .footer-content {
+        padding: 30px 15px;
+    }
+
+    .wrapper-footer .university-info h3 {
+        font-size: 20px;
+        margin-bottom: 8px;
+    }
+
+    .wrapper-footer .university-info p {
+        font-size: 14px;
+        line-height: 1.5;
+        margin-bottom: 3px;
+    }
+
+    .wrapper-footer .contact-item h4 {
+        font-size: 16px;
+        margin-bottom: 8px;
+    }
+
+    .wrapper-footer .contact-item p {
+        font-size: 13px;
+        line-height: 1.4;
+    }
+}
+
+@media (max-width: 480px) {
+    .wrapper-footer .footer-content {
+        padding: 20px 10px;
+    }
+
+    .wrapper-footer .university-info {
+        margin-bottom: 15px;
+    }
+
+    .wrapper-footer .university-info h3 {
+        font-size: 18px;
+        margin-bottom: 6px;
+    }
+
+    .wrapper-footer .university-info p {
+        font-size: 13px;
+        line-height: 1.4;
+        margin-bottom: 2px;
+    }
+
+    .wrapper-footer .contact-info {
+        margin-top: 20px;
+    }
+
+    .wrapper-footer .contact-item {
+        margin-bottom: 12px;
+    }
+
+    .wrapper-footer .contact-item h4 {
+        font-size: 15px;
+        margin-bottom: 6px;
+    }
+
+    .wrapper-footer .contact-item p {
+        font-size: 12px;
+        line-height: 1.3;
+    }
+}
+
+@media (max-width: 360px) {
+    .wrapper-footer .footer-content {
+        padding: 15px 8px;
+    }
+
+    .wrapper-footer .university-info h3 {
+        font-size: 16px;
+        margin-bottom: 5px;
+    }
+
+    .wrapper-footer .university-info p {
+        font-size: 12px;
+        line-height: 1.3;
+        margin-bottom: 1px;
+    }
+
+    .wrapper-footer .contact-item h4 {
+        font-size: 14px;
+        margin-bottom: 5px;
+    }
+
+    .wrapper-footer .contact-item p {
+        font-size: 11px;
+        line-height: 1.2;
+    }
+
+    .wrapper-footer .contact-item {
+        margin-bottom: 10px;
+    }
+
+    .wrapper-footer .contact-info {
+        margin-top: 15px;
+    }
+}

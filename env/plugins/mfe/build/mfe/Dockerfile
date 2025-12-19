@@ -14,9 +14,7 @@ RUN apt update \
     libpng-dev \
     # required for building node-canvas (on arm, for authoring)
     # https://www.npmjs.com/package/canvas
-    libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev \
-    # required for sharp package
-    libvips-dev libvips-tools
+    libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
 
 RUN mkdir -p /openedx/app /openedx/env
 WORKDIR /openedx/app
@@ -28,8 +26,7 @@ ENV PATH=/openedx/app/node_modules/.bin:${PATH}
 ####################### authn MFE
 ######## authn (git)
 FROM base AS authn-git
-#ADD --keep-git-dir=true https://github.com/openedx/frontend-app-authn.git#release/teak.2 .
-ADD --keep-git-dir=true https://github.com/buiducthang652/frontend-app-authn.git#main .
+ADD --keep-git-dir=true https://github.com/openedx/frontend-app-authn.git#release/teak.2 .
 
 ######## authn (src)
 # Empty layer with just the repo at the root, for build-time bind-mounts
@@ -356,8 +353,7 @@ CMD ["/bin/bash", "-c", "npm run start --- --config ./webpack.dev-tutor.config.j
 ####################### learning MFE
 ######## learning (git)
 FROM base AS learning-git
-# ADD --keep-git-dir=true https://github.com/openedx/frontend-app-learning.git#release/teak.2 .
-ADD --keep-git-dir=true https://github.com/buiducthang652/frontend-app-learning.git#main .
+ADD --keep-git-dir=true https://github.com/openedx/frontend-app-learning.git#release/teak.2 .
 
 ######## learning (src)
 # Empty layer with just the repo at the root, for build-time bind-mounts
