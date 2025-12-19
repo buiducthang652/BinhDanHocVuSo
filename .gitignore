@@ -1,0 +1,14 @@
+# Tutor - Open edX Configuration
+config.yml
+config.yml.backup
+data/
+*.log
+*.sock
+env/apps/openedx/settings/*/production.py
+env/build/mfe/node_modules/
+*.pyc
+__pycache__/
+.DS_Store
+*.key
+*.pem
+.env

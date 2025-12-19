@@ -1,0 +1,12 @@
+# Example Configuration - Copy to config.yml and update with real values
+LMS_HOST: binhdanhocvuso.hnue.edu.vn
+CMS_HOST: studio.binhdanhocvuso.hnue.edu.vn
+MFE_HOST: apps.binhdanhocvuso.hnue.edu.vn
+DEFAULT_SITE_THEME: indigo
+LANGUAGE_CODE: vi
+PLATFORM_NAME: Bình dân học vụ số - HNUE
+
+# CHANGE ALL SECRETS BELOW!
+MYSQL_ROOT_PASSWORD: CHANGE_ME
+OPENEDX_SECRET_KEY: CHANGE_ME
+JWT_RSA_PRIVATE_KEY: 'GENERATE_NEW_KEY'
